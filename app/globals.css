@@ -28,3 +28,11 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  /* スマホ時、ハンバーガーボタンのため上部に余白を追加 */
+  body {
+    padding-top: 0;
+  }
+}
