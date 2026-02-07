@@ -82,20 +82,20 @@ export default function Sidebar() {
 
             <li>
               <Link 
-                href="/calendar" 
+                href="/line-app/checkin" 
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>📅</span> カレンダー連携
+                <span>📅</span> 当日受付
               </Link>
             </li>
             <li>
               <Link 
-                href="/database" 
+                href="/line-app/history" 
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>🗄️</span> データベース
+                <span>🗄️</span> 参加履歴
               </Link>
             </li>
           </ul>
