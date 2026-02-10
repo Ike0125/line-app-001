@@ -98,6 +98,15 @@ export default function Sidebar() {
                 <span>🗄️</span> 参加履歴
               </Link>
             </li>
+            <li>
+              <Link 
+                href="/admin/events" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>📅</span> イベント管理
+              </Link>
+            </li>
           </ul>
         </nav>
 

@@ -3,6 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
+import { formatJstDateTime } from "@/app/_lib/formatDate";
 
 // 環境変数から管理者IDを読み込み
 const ADMIN_USER_ID = process.env.ADMIN_USER_ID;
@@ -160,7 +161,7 @@ export default async function AdminPage() {
             <div className="bg-white px-4 py-3 rounded shadow-sm w-[280px]">
               <div className="text-xs text-gray-500 mb-1">現在のイベント</div>
               <div className="font-bold text-gray-900 truncate">{event.title}</div>
-              <div className="text-sm text-gray-700 mt-1">開催：{event.date}</div>
+              <div className="text-sm text-gray-700 mt-1">開催：{formatJstDateTime(event.date)}</div>
             </div>
 
             <a

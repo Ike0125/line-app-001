@@ -12,18 +12,21 @@ export async function GET() {
       orderBy: { updatedAt: "desc" },
     });
 
-    // 返す項目を絞る（UIで扱いやすく）
+    // ポイント：ここで「日付」を「文字列」に変換してからフロントエンドへ渡します
     const history = rows.map((r) => ({
       eventId: r.eventId,
       title: r.event.title,
-      date: r.event.date,
+      // Date型なら文字列に変換。そうでなければそのまま。
+      date: r.event.date instanceof Date ? r.event.date.toISOString() : r.event.date,
       place: r.event.place,
       fee: r.event.fee,
       memo: r.event.memo,
-      status: r.status, // join / absent
-      checkedInAt: r.checkedInAt,
+      status: r.status,
+      // 受付日時も文字列に変換
+      checkedInAt: r.checkedInAt instanceof Date ? r.checkedInAt.toISOString() : r.checkedInAt,
       comment: r.comment ?? "",
-      updatedAt: r.updatedAt,
+      // 更新日時も文字列に変換
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : r.updatedAt,
     }));
 
     return NextResponse.json({ ok: true, history });

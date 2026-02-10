@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/_lib/prisma";
+import { formatJstDateTime } from "@/app/_lib/formatDate";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -152,7 +153,7 @@ export default async function LineAppPage({
 
       <div className="bg-white p-5 rounded-2xl shadow-sm mb-6 space-y-2">
         <div className="text-sm text-gray-600">場所：{event.place}</div>
-        <div className="text-sm text-gray-600">日時：{event.date}</div>
+        <div className="text-sm text-gray-600">日時：{formatJstDateTime(event.date)}</div>
         <div className="text-sm text-gray-600">参加費：{event.fee}</div>
         {event.memo && <div className="text-sm text-gray-600">メモ：{event.memo}</div>}
 
@@ -186,7 +187,7 @@ export default async function LineAppPage({
       </div>
 
       <div className="text-xs text-gray-500 mt-5 text-center">
-        受付締切：{new Date(event.deadline).toLocaleString("ja-JP")}
+        受付締切：{formatJstDateTime(event.deadline)}
       </div>
     </div>
   );

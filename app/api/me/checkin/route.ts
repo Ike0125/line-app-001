@@ -1,41 +1,39 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { requireUserId } from "@/app/_lib/requireUserId";
-import { getCurrentEvent } from "@/app/_lib/currentEvent";
 
-export async function POST() {
+export async function GET() {
   try {
     const userId = await requireUserId();
-    const event = await getCurrentEvent();
-    if (!event) return NextResponse.json({ error: "no_active_event" }, { status: 400 });
 
-    const rsvp = await prisma.rsvp.findUnique({
-      where: { eventId_userId: { eventId: event.id, userId } },
+    const rows = await prisma.rsvp.findMany({
+      where: { userId },
+      include: { event: true },
+      orderBy: { updatedAt: "desc" },
     });
 
-    // 参加（join）の人だけ受付可能
-    if (!rsvp || rsvp.status !== "join") {
-      return NextResponse.json({ error: "not_join" }, { status: 400 });
-    }
+    // 返す項目を絞り、Dateオブジェクトを文字列に変換する
+    const history = rows.map((r) => ({
+      eventId: r.eventId,
+      title: r.event.title,
+      // Date型を文字列（ISO形式）に変換
+      date: r.event.date instanceof Date ? r.event.date.toISOString() : r.event.date,
+      place: r.event.place,
+      fee: r.event.fee,
+      memo: r.event.memo,
+      status: r.status, // join / absent
+      // Date型を文字列に変換（nullの場合はそのまま）
+      checkedInAt: r.checkedInAt instanceof Date ? r.checkedInAt.toISOString() : r.checkedInAt,
+      comment: r.comment ?? "",
+      // Date型を文字列に変換
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : r.updatedAt,
+    }));
 
-    if (rsvp.checkedInAt) {
-      return NextResponse.json({
-        ok: true,
-        message: "already_checked_in",
-        rsvp,
-      });
-    }
-
-    const updated = await prisma.rsvp.update({
-      where: { eventId_userId: { eventId: event.id, userId } },
-      data: { checkedInAt: new Date() },
-    });
-
-    return NextResponse.json({ ok: true, rsvp: updated });
+    return NextResponse.json({ ok: true, history });
   } catch (e: any) {
     if (String(e?.message) === "UNAUTHORIZED") {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }

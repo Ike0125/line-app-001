@@ -64,19 +64,22 @@ export default async function EventEditPage({
 
     const id = String(formData.get("id") || "").trim();
     const title = String(formData.get("title") || "").trim();
-    const date = String(formData.get("date") || "").trim();
+    const dateStr = String(formData.get("date") || "").trim();
     const place = String(formData.get("place") || "").trim();
     const fee = String(formData.get("fee") || "").trim();
     const memo = String(formData.get("memo") || "").trim();
     const deadlineStr = String(formData.get("deadline") || "").trim();
 
-    if (!id || !title || !date || !place || !fee || !deadlineStr) return;
+    if (!id || !title || !dateStr || !place || !deadlineStr) return;
+
+    const dateObj = new Date(dateStr);
+    if (Number.isNaN(dateObj.getTime())) return;
 
     await prisma.event.update({
       where: { id },
       data: {
         title,
-        date,
+        date: dateObj, // ここがポイント
         place,
         fee,
         memo: memo || null,
@@ -183,8 +186,9 @@ export default async function EventEditPage({
               <label className="block text-sm font-bold text-gray-700 mb-1">開催日時（date：文字列）</label>
               <input
                 name="date"
+                type="datetime-local"
                 required
-                defaultValue={event.date}
+                defaultValue={event.date ? new Date(event.date).toISOString().slice(0, 16) : ""}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2"
               />
             </div>
@@ -195,7 +199,7 @@ export default async function EventEditPage({
                 name="deadline"
                 type="datetime-local"
                 required
-                defaultValue={(event.deadline as any).toISOString?.().slice(0, 16) ?? ""}
+                defaultValue={event.deadline ? new Date(event.deadline).toISOString().slice(0, 16) : ""}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2"
               />
             </div>
@@ -214,8 +218,7 @@ export default async function EventEditPage({
               <label className="block text-sm font-bold text-gray-700 mb-1">会費（fee）</label>
               <input
                 name="fee"
-                required
-                defaultValue={event.fee}
+                defaultValue={event.fee ?? ""}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2"
               />
             </div>

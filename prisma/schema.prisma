@@ -12,25 +12,39 @@ model Event {
   id       String   @id @default(cuid())
   title    String
   memo     String?
-  date     String
-  deadline DateTime
-  place    String
-  fee      String
+  date     DateTime  //開始
+  endAt    DateTime? //終了
+  deadline DateTime?
+  place    String?
+  fee      String?
   isActive Boolean  @default(false)
+
+  // ★ Google Calendar 連携用
+  gcalEventId String? @unique
+  gcalUpdatedAt DateTime?
+
   rsvps    Rsvp[]
 }
 
 model Rsvp {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   displayName String
   status      String
   comment     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  checkedInAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   eventId     String
-  event       Event    @relation(fields: [eventId], references: [id])
+  checkedInAt DateTime?
+  event       Event     @relation(fields: [eventId], references: [id])
 
   @@unique([eventId, userId])
+}
+
+model GoogleAuth {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  refreshToken String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

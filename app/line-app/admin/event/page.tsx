@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { formatJstDateTime } from "@/app/_lib/formatDate";
 
 const prisma = new PrismaClient();
 
@@ -34,7 +35,7 @@ export default async function EventAdminListPage() {
   }
 
   const events = await prisma.event.findMany({
-    orderBy: { deadline: "desc" },
+    orderBy: { date: "asc" },
   });
 
   async function setActiveEvent(formData: FormData) {
@@ -68,14 +69,15 @@ export default async function EventAdminListPage() {
           </a>
         </div>
 
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <a
             href="/line-app/admin/event/new"
             className="inline-flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-xl"
           >
             ＋ 新規イベント作成
           </a>
-        </div>
+        </div> 
+        */}
 
         {events.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm p-4 text-gray-600">
@@ -100,10 +102,10 @@ export default async function EventAdminListPage() {
                     </div>
 
                     <div className="font-bold text-gray-900 truncate">{e.title}</div>
-                    <div className="text-sm text-gray-700 mt-1">開催：{e.date}</div>
+                    <div className="text-sm text-gray-700 mt-1">開催：{formatJstDateTime(e.date)}</div>
                     <div className="text-xs text-gray-500 mt-1 truncate">場所：{e.place} / 会費：{e.fee}</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      締切：{new Date(e.deadline).toLocaleString("ja-JP")}
+                      締切：{formatJstDateTime(e.deadline)}
                     </div>
                   </div>
 
