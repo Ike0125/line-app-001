@@ -9,21 +9,24 @@ datasource db {
 }
 
 model Event {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   title    String
   memo     String?
-  date     DateTime  //開始
+  date     DateTime //開始
   endAt    DateTime? //終了
   deadline DateTime?
   place    String?
   fee      String?
-  isActive Boolean  @default(false)
+  isActive Boolean   @default(false)
 
   // ★ Google Calendar 連携用
-  gcalEventId String? @unique
+  gcalEventId   String?   @unique
   gcalUpdatedAt DateTime?
 
-  rsvps    Rsvp[]
+  rsvps Rsvp[]
+
+  // ★開催通知
+  notices EventNotice?
 }
 
 model Rsvp {
@@ -47,4 +50,18 @@ model GoogleAuth {
   refreshToken String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model EventNotice {
+  id              String   @id @default(cuid())
+  eventId         String   @unique
+  status          String
+  message         String? // 任意
+  updatedByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
 }
