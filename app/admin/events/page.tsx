@@ -201,7 +201,7 @@ export default function AdminEventsPage() {
               const opened = openId === ev.id;
               return (
                 <li key={ev.id} className="p-4 space-y-2">
-                  <div className="flex gap-3 items-start justify-between">
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
                     <div className="min-w-0">
                       <div className="font-semibold break-words">{ev.title}</div>
                       <div className="text-sm text-gray-600">
@@ -215,20 +215,22 @@ export default function AdminEventsPage() {
                       ) : null}
                     </div>
 
-                    <button
-                      className="shrink-0 border rounded px-3 py-1 text-sm"
-                      onClick={() => setOpenId(opened ? null : ev.id)}
-                    >
-                      {opened ? "閉じる" : "詳細"}
-                    </button>
-                    <button
-                    className={`shrink-0 rounded px-3 py-1 text-sm ${
-                        ev.isActive ? "bg-green-600 text-white" : "border"
-                    }`}
-                    onClick={() => activateEvent(ev.id)}
-                    >
-                    {ev.isActive ? "現在" : "現在にする"}
-                    </button>
+                    <div className="flex flex-wrap gap-2 md:justify-end md:items-center">
+                      <button
+                        className="text-sm text-blue-700 underline underline-offset-2"
+                        onClick={() => setOpenId(opened ? null : ev.id)}
+                      >
+                        {opened ? "閉じる" : "詳細"}
+                      </button>
+                      <button
+                        className={`rounded px-3 py-1 text-sm ${
+                          ev.isActive ? "bg-green-600 text-white" : "border"
+                        }`}
+                        onClick={() => activateEvent(ev.id)}
+                      >
+                        {ev.isActive ? "現在" : "現在にする"}
+                      </button>
+                    </div>
                   </div>
 
                   {opened && (
