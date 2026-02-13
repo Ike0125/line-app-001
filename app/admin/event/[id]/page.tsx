@@ -1,43 +1,15 @@
-import { PrismaClient } from "@prisma/client";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/app/_lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-
-const prisma = new PrismaClient();
-
-function isAdmin(session: any) {
-  const adminId = process.env.ADMIN_USER_ID;
-  const uid = (session?.user as any)?.id;
-  return !!adminId && uid === adminId;
-}
 
 export default async function EventEditPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
+  const { id } = params;
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect(`/api/auth/signin?callbackUrl=/line-app/admin/event/${id}`);
-  }
-  if (!isAdmin(session)) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-sm text-center">
-          <h1 className="text-lg font-bold text-red-600 mb-2">アクセス権限がありません</h1>
-          <a
-            href="/line-app/admin/event"
-            className="inline-block mt-4 bg-gray-700 text-white font-bold py-2 px-4 rounded-xl"
-          >
-            イベント一覧へ戻る
-          </a>
-        </div>
-      </div>
-    );
-  }
+  // middleware が /admin/* を保護するので、ここでの認証・権限チェックは不要
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) {
@@ -46,7 +18,7 @@ export default async function EventEditPage({
         <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-sm text-center">
           <h1 className="text-lg font-bold text-gray-800 mb-2">イベントが見つかりません</h1>
           <a
-            href="/line-app/admin/event"
+            href="/admin/event"
             className="inline-block mt-4 bg-blue-600 text-white font-bold py-2 px-4 rounded-xl"
           >
             一覧へ戻る
@@ -58,9 +30,6 @@ export default async function EventEditPage({
 
   async function updateEvent(formData: FormData) {
     "use server";
-    const s = await getServerSession(authOptions);
-    if (!s?.user) return;
-    if (!isAdmin(s)) return;
 
     const id = String(formData.get("id") || "").trim();
     const title = String(formData.get("title") || "").trim();
@@ -75,30 +44,34 @@ export default async function EventEditPage({
     const dateObj = new Date(dateStr);
     if (Number.isNaN(dateObj.getTime())) return;
 
+    const deadlineObj = new Date(deadlineStr);
+    if (Number.isNaN(deadlineObj.getTime())) return;
+
     await prisma.event.update({
       where: { id },
       data: {
         title,
-        date: dateObj, // ここがポイント
+        date: dateObj,
         place,
         fee,
         memo: memo || null,
-        deadline: new Date(deadlineStr),
+        deadline: deadlineObj,
       },
     });
 
+    // 管理画面側の再描画
+    revalidatePath("/admin");
+    revalidatePath("/admin/event");
+    revalidatePath(`/admin/event/${id}`);
+
+    // ユーザー側に「現在イベント」表示があるなら
     revalidatePath("/line-app");
-    revalidatePath("/line-app/admin");
-    revalidatePath("/line-app/admin/event");
-    revalidatePath(`/line-app/admin/event/${id}`);
-    redirect("/line-app/admin/event");
+
+    redirect("/admin/event");
   }
 
   async function setActiveEvent(formData: FormData) {
     "use server";
-    const s = await getServerSession(authOptions);
-    if (!s?.user) return;
-    if (!isAdmin(s)) return;
 
     const id = String(formData.get("id") || "").trim();
     if (!id) return;
@@ -106,18 +79,16 @@ export default async function EventEditPage({
     await prisma.event.updateMany({ data: { isActive: false } });
     await prisma.event.update({ where: { id }, data: { isActive: true } });
 
+    revalidatePath("/admin");
+    revalidatePath("/admin/event");
+    revalidatePath(`/admin/event/${id}`);
     revalidatePath("/line-app");
-    revalidatePath("/line-app/admin");
-    revalidatePath("/line-app/admin/event");
-    revalidatePath(`/line-app/admin/event/${id}`);
-    redirect("/line-app/admin/event");
+
+    redirect("/admin/event");
   }
 
   async function deleteEvent(formData: FormData) {
     "use server";
-    const s = await getServerSession(authOptions);
-    if (!s?.user) return;
-    if (!isAdmin(s)) return;
 
     const id = String(formData.get("id") || "").trim();
     const confirm = String(formData.get("confirm") || "").trim();
@@ -127,10 +98,11 @@ export default async function EventEditPage({
     await prisma.rsvp.deleteMany({ where: { eventId: id } });
     await prisma.event.delete({ where: { id } });
 
+    revalidatePath("/admin");
+    revalidatePath("/admin/event");
     revalidatePath("/line-app");
-    revalidatePath("/line-app/admin");
-    revalidatePath("/line-app/admin/event");
-    redirect("/line-app/admin/event");
+
+    redirect("/admin/event");
   }
 
   return (
@@ -141,7 +113,7 @@ export default async function EventEditPage({
             <h1 className="text-lg font-bold text-gray-800">イベント編集</h1>
             <div className="text-sm text-gray-500 mt-1">ID：{event.id}</div>
           </div>
-          <a href="/line-app/admin/event" className="text-sm text-blue-600 font-bold">
+          <a href="/admin/event" className="text-sm text-blue-600 font-bold">
             一覧へ戻る
           </a>
         </div>
@@ -163,7 +135,10 @@ export default async function EventEditPage({
           {!event.isActive && (
             <form action={setActiveEvent} className="mb-4">
               <input type="hidden" name="id" value={event.id} />
-              <button type="submit" className="text-sm bg-gray-800 text-white font-bold py-2 px-4 rounded-xl">
+              <button
+                type="submit"
+                className="text-sm bg-gray-800 text-white font-bold py-2 px-4 rounded-xl"
+              >
                 現在のイベントにする
               </button>
             </form>
@@ -183,7 +158,7 @@ export default async function EventEditPage({
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">開催日時（date：文字列）</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1">開催日時（date）</label>
               <input
                 name="date"
                 type="datetime-local"

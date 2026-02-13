@@ -1,10 +1,13 @@
 import { Metadata, Viewport } from 'next';
 import { NextAuthProvider } from "./NextAuthProvider";
-import Sidebar from "./components/Sidebar";
+import Sidebar from "@/app/components/Sidebar";
 import "./globals.css"; 
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
-  title: 'My LINE App',
+  title: 'SWF LINE App',
   description: 'Line integration app',
 }
 

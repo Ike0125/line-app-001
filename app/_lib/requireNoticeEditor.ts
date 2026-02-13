@@ -19,7 +19,8 @@ export async function requireNoticeEditorUserId(): Promise<string> {
 
   if (!session?.user) {
     // 管理画面配下なので callbackUrl は固定
-    redirect("/api/auth/signin?callbackUrl=/line-app/admin/notice");
+    redirect("/api/auth/signin?callbackUrl=/admin/notice");
+
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,38 +1,10 @@
-import { PrismaClient } from "@prisma/client";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
+import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { formatJstDateTime } from "@/app/_lib/formatDate";
 
-const prisma = new PrismaClient();
-
-function isAdmin(session: any) {
-  const adminId = process.env.ADMIN_USER_ID;
-  const uid = (session?.user as any)?.id;
-  return !!adminId && uid === adminId;
-}
-
 export default async function EventAdminListPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/api/auth/signin?callbackUrl=/line-app/admin/event");
-  }
-  if (!isAdmin(session)) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-sm text-center">
-          <h1 className="text-lg font-bold text-red-600 mb-2">アクセス権限がありません</h1>
-          <a
-            href="/line-app/admin"
-            className="inline-block mt-4 bg-gray-700 text-white font-bold py-2 px-4 rounded-xl"
-          >
-            管理画面へ戻る
-          </a>
-        </div>
-      </div>
-    );
-  }
+  // middleware が /admin/* を保護するので、ここでの認証・権限チェックは不要
 
   const events = await prisma.event.findMany({
     orderBy: { date: "asc" },
@@ -40,9 +12,6 @@ export default async function EventAdminListPage() {
 
   async function setActiveEvent(formData: FormData) {
     "use server";
-    const s = await getServerSession(authOptions);
-    if (!s?.user) return;
-    if (!isAdmin(s)) return;
 
     const id = String(formData.get("id") || "").trim();
     if (!id) return;
@@ -50,10 +19,14 @@ export default async function EventAdminListPage() {
     await prisma.event.updateMany({ data: { isActive: false } });
     await prisma.event.update({ where: { id }, data: { isActive: true } });
 
+    // 管理画面側の再描画
+    revalidatePath("/admin");
+    revalidatePath("/admin/event");
+
+    // ユーザー側（/line-app）に「現在イベント」を出しているなら再描画
     revalidatePath("/line-app");
-    revalidatePath("/line-app/admin");
-    revalidatePath("/line-app/admin/event");
-    redirect("/line-app/admin/event");
+
+    redirect("/admin/event");
   }
 
   return (
@@ -64,20 +37,11 @@ export default async function EventAdminListPage() {
             <h1 className="text-lg font-bold text-gray-800">イベント管理（一覧）</h1>
             <div className="text-sm text-gray-500 mt-1">イベントの作成・編集・現在イベントの切替</div>
           </div>
-          <a href="/line-app/admin" className="text-sm text-blue-600 font-bold">
+
+          <a href="/admin" className="text-sm text-blue-600 font-bold">
             戻る
           </a>
         </div>
-
-        {/* <div className="mb-4">
-          <a
-            href="/line-app/admin/event/new"
-            className="inline-flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-xl"
-          >
-            ＋ 新規イベント作成
-          </a>
-        </div> 
-        */}
 
         {events.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm p-4 text-gray-600">
@@ -104,9 +68,7 @@ export default async function EventAdminListPage() {
                     <div className="font-bold text-gray-900 truncate">{e.title}</div>
                     <div className="text-sm text-gray-700 mt-1">開催：{formatJstDateTime(e.date)}</div>
                     <div className="text-xs text-gray-500 mt-1 truncate">場所：{e.place} / 会費：{e.fee}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      締切：{formatJstDateTime(e.deadline)}
-                    </div>
+                    <div className="text-xs text-gray-500 mt-1">締切：{formatJstDateTime(e.deadline)}</div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2 shrink-0">
@@ -123,7 +85,7 @@ export default async function EventAdminListPage() {
                     )}
 
                     <a
-                      href={`/line-app/admin/event/${e.id}`}
+                      href={`/admin/event/${e.id}`}
                       className="text-xs bg-white border border-gray-300 text-gray-800 font-bold py-2 px-3 rounded-lg"
                     >
                       編集

@@ -1,17 +1,14 @@
 import { prisma } from "@/app/_lib/prisma";
 import { requireNoticeEditorUserId } from "@/app/_lib/requireNoticeEditor";
-// import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
-import NoticeForm from "./NoticeForm";
 import { SubmitButton } from "./_components/SubmitButton";
 
 const STATUS_OPTIONS = ["初期設定", "開催", "中止", "その他", "メッセージのみ", "非表示"] as const;
 const TZ = "Asia/Tokyo";
 
 function getJstStartOfTodayUtc(): Date {
-  // JSTの年月日を取得 → JST 00:00 を UTC に変換
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
@@ -23,7 +20,6 @@ function getJstStartOfTodayUtc(): Date {
   const m = Number(parts.find((p) => p.type === "month")?.value);
   const d = Number(parts.find((p) => p.type === "day")?.value);
 
-  // JST 00:00 = UTC 15:00(前日) なので 9時間引く
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - 9 * 60 * 60 * 1000);
 }
 
@@ -37,33 +33,32 @@ function formatEventLabel(date: Date, title: string) {
   const wd = new Intl.DateTimeFormat("ja-JP", {
     timeZone: TZ,
     weekday: "short",
-  }).format(date); // 例: "火"
+  }).format(date);
 
   return `${md}(${wd}) ${title}`;
 }
 
-  export default async function AdminNoticePage({
-    searchParams,
-  }: {
-    searchParams?: Promise<{ eventId?: string; saved?: string }>;
-  }) {
-    const sp = await searchParams;
-  // 権限チェック（未ログイン→サインイン / 権限なし→例外）
+export default async function AdminNoticePage({
+  searchParams,
+}: {
+  searchParams?: { eventId?: string; saved?: string };
+}) {
+  const sp = searchParams;
+
+  // 権限チェック（notice編集者のみ許可）
+  // ※ /admin のログイン自体は middleware が保護している前提
   let editorUserId = "";
   try {
     editorUserId = await requireNoticeEditorUserId();
   } catch (e: any) {
     const msg = String(e?.message ?? e);
 
-    // 画面表示を丁寧に（運用向け）
     if (msg.includes("FORBIDDEN")) {
       return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
           <div className="bg-white rounded-xl shadow p-6 max-w-lg w-full">
             <h1 className="text-xl font-bold text-red-600 mb-2">アクセス権限がありません</h1>
-            <p className="text-gray-700">
-              このページは「開催通知の編集者」のみ利用できます。
-            </p>
+            <p className="text-gray-700">このページは「開催通知の編集者」のみ利用できます。</p>
           </div>
         </div>
       );
@@ -80,18 +75,15 @@ function formatEventLabel(date: Date, title: string) {
     throw e;
   }
 
-  // 表示対象イベント（isActive優先）
+  // 表示対象イベント（isActive優先 / 今日以降 5件）
   const start = getJstStartOfTodayUtc();
 
   const events = await prisma.event.findMany({
-    where: { date: { gte: start } },   // 今日以降
-    orderBy: { date: "asc" },         // 昇順
-    take: 5,                          // 5件
+    where: { date: { gte: start } },
+    orderBy: { date: "asc" },
+    take: 5,
     select: { id: true, title: true, date: true, isActive: true },
   });
-
-  // デフォルト選択：isActive がこの5件にいればそれ、いなければ先頭
-  //const current = events.find((e) => e.isActive) ?? events[0] ?? null;
 
   const selectedEventId = sp?.eventId;
   const current =
@@ -104,11 +96,13 @@ function formatEventLabel(date: Date, title: string) {
     ? await prisma.eventNotice.findUnique({ where: { eventId: current.id } })
     : null;
 
+  // 表示用（名前）
   const session = await getServerSession(authOptions);
 
   async function saveAction(formData: FormData) {
     "use server";
 
+    // 保存時も編集者チェック（安全のため）
     const userId = await requireNoticeEditorUserId();
 
     const eventId = String(formData.get("eventId") ?? "");
@@ -133,10 +127,8 @@ function formatEventLabel(date: Date, title: string) {
       },
     });
 
-    // 保存後は同じイベントを保持し、saved=1で通知
-    redirect(`/line-app/admin/notice?eventId=${encodeURIComponent(eventId)}`);
-
-    //revalidatePath("/line-app/admin/notice");
+    // ★URLを /admin に修正
+    redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&saved=1`);
   }
 
   return (
@@ -152,6 +144,7 @@ function formatEventLabel(date: Date, title: string) {
               埋め込みURL：<span className="font-mono">/api/public/event-notice</span>
             </div>
           </div>
+
           <div className="flex gap-2">
             <a
               href="/api/public/event-notice"
@@ -169,58 +162,51 @@ function formatEventLabel(date: Date, title: string) {
             <p className="text-gray-700">イベントが未登録です。</p>
           </div>
         ) : (
-        <>
+          <>
+            <form action={saveAction} className="bg-white rounded-xl shadow p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">対象イベント</label>
+                <select name="eventId" defaultValue={current.id} className="w-full border rounded px-3 py-2">
+                  {events.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {formatEventLabel(e.date, e.title)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-        <form action={saveAction} className="bg-white rounded-xl shadow p-6 space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">対象イベント</label>
-            <select
-              name="eventId"
-              defaultValue={current.id}
-              className="w-full border rounded px-3 py-2"
-            >
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {formatEventLabel(e.date, e.title)}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">通知ステータス</label>
+                {STATUS_OPTIONS.map((s) => (
+                  <label key={s} className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="status"
+                      value={s}
+                      defaultChecked={(currentNotice?.status ?? "初期設定") === s}
+                      className="accent-blue-600"
+                    />
+                    <span>{s}</span>
+                  </label>
+                ))}
+              </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-gray-700 mb-2">通知ステータス</label>
-            {STATUS_OPTIONS.map((s) => (
-              <label key={s} className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="status"
-                  value={s}
-                  defaultChecked={(currentNotice?.status ?? "初期設定") === s}
-                  className="accent-blue-600"
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">メッセージ（任意）</label>
+                <textarea
+                  name="message"
+                  defaultValue={currentNotice?.message ?? ""}
+                  rows={4}
+                  className="w-full border rounded px-3 py-2 h-28"
+                  placeholder="例：雨天のため中止です／現地の路面が滑りやすいのでご注意ください"
                 />
-                <span>{s}</span>
-              </label>
-            ))}
-          </div>
+              </div>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">メッセージ（任意）</label>
-            <textarea
-              name="message"
-              defaultValue={currentNotice?.message ?? ""}
-              rows={4}
-              className="w-full border rounded px-3 py-2 h-28"
-              placeholder="例：雨天のため中止です／現地の路面が滑りやすいのでご注意ください"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            {/* 送信ボタン */}
-            <SubmitButton />
-
-          </div>
-        </form>
-        </>            
+              <div className="flex items-center justify-between">
+                <SubmitButton />
+              </div>
+            </form>
+          </>
         )}
       </div>
     </div>

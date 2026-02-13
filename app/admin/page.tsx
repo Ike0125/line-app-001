@@ -1,61 +1,67 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
 import { formatJstDateTime } from "@/app/_lib/formatDate";
 
-// 環境変数から管理者IDを読み込み
-const ADMIN_USER_ID = process.env.ADMIN_USER_ID;
-
 export default async function AdminPage() {
-  // 1. ログインチェック
+  // middleware が /admin/* を保護する前提なので、ここでは「表示用」にセッションを読むだけ
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user) {
-    redirect("/api/auth/signin?callbackUrl=/line-app/admin");
-  }
-
-  // 2. セキュリティチェック
-  if (!ADMIN_USER_ID) {
-    return (
-      <div className="p-10 text-red-600">
-        管理者IDが設定されていません。.env / .env.local を確認してください。（ADMIN_USER_ID）
-      </div>
-    );
-  }
-
-  // ログイン中のIDを取得
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const currentUserId = (session.user as any).id;
-
-  if (currentUserId !== ADMIN_USER_ID) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">アクセス権限がありません</h1>
-          <p className="text-gray-600 mb-6">
-            このページは管理者専用です。
-            <br />
-            あなたのID: {currentUserId || "不明"}
-          </p>
-          <a
-            href="/line-app"
-            className="inline-block bg-gray-500 text-white font-bold py-2 px-6 rounded hover:bg-gray-600 transition"
-          >
-            トップページへ戻る
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  // --- 以下、管理者のみ閲覧可能 ---
-
-  // 3. イベント情報の取得
+  // 1) イベント情報の取得
   const event =
     (await prisma.event.findFirst({ where: { isActive: true } })) ??
     (await prisma.event.findFirst({ orderBy: { deadline: "desc" } }));
+
+  // ★追加機能: データ削除処理 (Server Action)
+  async function resetData(formData: FormData) {
+    "use server";
+
+    const confirm = String(formData.get("confirm") ?? "");
+    if (confirm !== "DELETE") return;
+
+    if (!event) return;
+
+    await prisma.rsvp.deleteMany({
+      where: { eventId: event.id },
+    });
+
+    revalidatePath("/admin");
+  }
+
+  // ★追加機能: 受付（チェックイン） (Server Action)
+  async function checkinAction(formData: FormData) {
+    "use server";
+
+    const userId = String(formData.get("userId") ?? "");
+    if (!userId) return;
+
+    if (!event) return;
+
+    await prisma.rsvp.update({
+      where: { eventId_userId: { eventId: event.id, userId } },
+      data: { checkedInAt: new Date() },
+    });
+
+    revalidatePath("/admin");
+  }
+
+  // ★追加機能: 受付取消 (Server Action)
+  async function undoCheckinAction(formData: FormData) {
+    "use server";
+
+    const userId = String(formData.get("userId") ?? "");
+    if (!userId) return;
+
+    if (!event) return;
+
+    await prisma.rsvp.update({
+      where: { eventId_userId: { eventId: event.id, userId } },
+      data: { checkedInAt: null },
+    });
+
+    revalidatePath("/admin");
+  }
 
   // イベントが無い場合でも管理画面を表示し、登録画面へ誘導する
   if (!event) {
@@ -66,7 +72,7 @@ export default async function AdminPage() {
           <p className="text-gray-600 mb-6">イベントが未登録です。</p>
 
           <a
-            href="/line-app/admin/event"
+            href="/admin/event"
             className="inline-block bg-blue-600 text-white font-bold py-3 px-5 rounded-xl"
           >
             ➕ イベント登録
@@ -76,69 +82,13 @@ export default async function AdminPage() {
     );
   }
 
-  // ★追加機能: データ削除処理 (Server Action)
-  async function resetData(formData: FormData) {
-    "use server";
-
-    const s = await getServerSession(authOptions);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((s?.user as any)?.id !== process.env.ADMIN_USER_ID) return;
-
-    const confirm = String(formData.get("confirm") ?? "");
-    if (confirm !== "DELETE") return;
-
-    await prisma.rsvp.deleteMany({
-      where: { eventId: event.id },
-    });
-
-    revalidatePath("/line-app/admin");
-  }
-
-  // ★追加機能: 受付（チェックイン） (Server Action)
-  async function checkinAction(formData: FormData) {
-    "use server";
-
-    const s = await getServerSession(authOptions);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((s?.user as any)?.id !== process.env.ADMIN_USER_ID) return;
-
-    const userId = String(formData.get("userId") ?? "");
-    if (!userId) return;
-
-    await prisma.rsvp.update({
-      where: { eventId_userId: { eventId: event.id, userId } },
-      data: { checkedInAt: new Date() },
-    });
-
-    revalidatePath("/line-app/admin");
-  }
-
-  // ★追加機能: 受付取消 (Server Action)
-  async function undoCheckinAction(formData: FormData) {
-    "use server";
-
-    const s = await getServerSession(authOptions);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((s?.user as any)?.id !== process.env.ADMIN_USER_ID) return;
-
-    const userId = String(formData.get("userId") ?? "");
-    if (!userId) return;
-
-    await prisma.rsvp.update({
-      where: { eventId_userId: { eventId: event.id, userId } },
-      data: { checkedInAt: null },
-    });
-
-    revalidatePath("/line-app/admin");
-  }
-
-  // 4. 参加者データの取得
+  // 2) 参加者データの取得
   const rsvps = await prisma.rsvp.findMany({
     where: { eventId: event.id },
     orderBy: { updatedAt: "desc" },
   });
 
-  // 5. 集計
+  // 3) 集計
   const joinCount = rsvps.filter((r) => r.status === "join").length;
   const absentCount = rsvps.filter((r) => r.status === "absent").length;
   const totalCount = rsvps.length;
@@ -155,7 +105,10 @@ export default async function AdminPage() {
 
           <div className="flex flex-col items-end gap-2">
             <div className="text-sm bg-white px-4 py-2 rounded shadow-sm">
-              管理者: <span className="font-bold text-green-600">{session.user.name}</span>
+              管理者:{" "}
+              <span className="font-bold text-green-600">
+                {session?.user?.name ?? "（名前未取得）"}
+              </span>
             </div>
 
             <div className="bg-white px-4 py-3 rounded shadow-sm w-[280px]">
@@ -165,7 +118,7 @@ export default async function AdminPage() {
             </div>
 
             <a
-              href="/line-app/admin/event"
+              href="/admin/event"
               className="text-xs bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition"
             >
               イベント管理
@@ -304,11 +257,7 @@ export default async function AdminPage() {
           </p>
 
           <form action={resetData} className="flex gap-3 items-center">
-            <input
-              name="confirm"
-              placeholder="DELETE と入力"
-              className="border rounded px-3 py-2 w-48"
-            />
+            <input name="confirm" placeholder="DELETE と入力" className="border rounded px-3 py-2 w-48" />
             <button
               type="submit"
               className="bg-red-600 text-white font-bold px-4 py-2 rounded hover:bg-red-700"

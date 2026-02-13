@@ -54,20 +54,67 @@ export default function Sidebar() {
           <ul className="space-y-2">
             <li>
               <Link 
-                href="/line-app" 
+                href="/" 
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>📱</span> ユーザー用
+                <span>🏠</span> ホーム
               </Link>
             </li>
             <li>
               <Link 
-                href="/admin/" 
+                href="/admin/notice" 
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>🗄️</span> 管理者用
+                <span>📅</span> 当日開催通知
+              </Link>
+            </li>
+            <li>
+              <Link 
+                href="/admin/events" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>📅</span> イベント管理
+              </Link>
+            </li>
+            <li>
+              <Link 
+                href="/admin" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>📱</span> LINE予約管理
+              </Link>
+            </li>
+            <li>
+              <Link 
+                href="/line-app/checkin" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>📅</span> 当日受付
+              </Link>
+            </li>
+
+            <li>
+              <Link 
+                href="/line-app" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>📱</span> LINE予約
+              </Link>
+            </li>
+
+            <li>
+              <Link 
+                href="/line-app/history" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>🗄️</span> 参加履歴
               </Link>
             </li>
           </ul>

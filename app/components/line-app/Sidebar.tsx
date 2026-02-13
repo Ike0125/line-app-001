@@ -58,7 +58,16 @@ export default function Sidebar() {
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>📱</span> ユーザー用
+                <span>📱</span> LINE予約
+              </Link>
+            </li>
+            <li>
+              <Link 
+                href="/line-app/history" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>🗄️</span> 参加履歴
               </Link>
             </li>
             <li>
@@ -67,7 +76,7 @@ export default function Sidebar() {
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>🗄️</span> 管理者用
+                <span>🗄️</span> 管理者用ページ
               </Link>
             </li>
           </ul>

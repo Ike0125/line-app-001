@@ -4,7 +4,7 @@ import { promises as fs } from "fs";
 import path from "path";
 
 // ログ記録関数：型を any から User に変更
-const logLoginEvent = async (userInfo: User) => {
+  const logLoginEvent = async (userInfo: User) => {
   const logDir = path.join(process.cwd(), "logs");
   const logFile = path.join(logDir, "login.log");
   
@@ -38,12 +38,28 @@ export const authOptions: NextAuthOptions = {
       await logLoginEvent(user);
       return true;
     },
+
+    async jwt({ token, profile, account }) {
+      // 初回ログイン時に LINE の userId を token に保存
+      if (account?.provider === "line") {
+        const p: any = profile;
+
+        // LINE OIDC の userId は通常 sub に入る
+        token.lineUserId = p?.sub ?? p?.userId ?? token.lineUserId;
+        token.name = p?.name ?? token.name;
+      }
+      return token;
+    },
+
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        // ここはNextAuthの型定義を拡張しないとエラーになるため、
-        // 今回は例外的にESLintの警告をこの行だけ無効化します
+      if (session.user) {
+        // ★ここを token.sub ではなく token.lineUserId にする
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).id = token.sub;
+        (session.user as any).id = (token as any).lineUserId ?? token.sub;
+
+        // （任意）sessionにも明示的に持たせたいなら
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session as any).lineUserId = (token as any).lineUserId;
       }
       return session;
     },
