@@ -2,6 +2,7 @@ import NextAuth, { NextAuthOptions, User } from "next-auth"; // ★Userを追加
 import LineProvider from "next-auth/providers/line";
 import { promises as fs } from "fs";
 import path from "path";
+import { prisma } from "@/app/_lib/prisma";
 
 // ログ記録関数：型を any から User に変更
   const logLoginEvent = async (userInfo: User) => {
@@ -34,8 +35,32 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
       await logLoginEvent(user);
+
+      if (account?.provider === "line") {
+        const p: any = profile;
+        const lineUserId = p?.sub ?? p?.userId ?? user?.id;
+        if (lineUserId) {
+          const displayName = user?.name ?? p?.name ?? null;
+          const pictureUrl = p?.picture ?? p?.pictureUrl ?? user?.image ?? null;
+
+          await prisma.lineLoginUser.upsert({
+            where: { lineUserId },
+            create: {
+              lineUserId,
+              displayName,
+              pictureUrl,
+              lastLoginAt: new Date(),
+            },
+            update: {
+              displayName,
+              pictureUrl,
+              lastLoginAt: new Date(),
+            },
+          });
+        }
+      }
       return true;
     },
 

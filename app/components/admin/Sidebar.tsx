@@ -81,6 +81,15 @@ export default function Sidebar() {
             </li>
             <li>
               <Link 
+                href="/admin/line-users" 
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>👥</span> LINEログイン一覧
+              </Link>
+            </li>
+            <li>
+              <Link 
                 href="/admin" 
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"

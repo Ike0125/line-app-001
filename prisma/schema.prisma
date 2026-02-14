@@ -70,3 +70,15 @@ model EventNotice {
   @@index([updatedAt])
   @@index([isPublished, publishedAt])
 }
+
+model LineLoginUser {
+  id          String   @id @default(cuid())
+  lineUserId  String   @unique
+  displayName String?
+  pictureUrl  String?
+  lastLoginAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lastLoginAt])
+}

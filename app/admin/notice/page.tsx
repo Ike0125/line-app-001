@@ -1,14 +1,12 @@
 import { prisma } from "@/app/_lib/prisma";
 import { requireNoticeEditorUserId } from "@/app/_lib/requireNoticeEditor";
+import { renderEventNoticeHtml } from "@/app/_lib/eventNoticeRender";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 
 const STATUS_OPTIONS = ["初期設定", "開催", "中止", "その他", "メッセージのみ", "非表示"] as const;
 const TZ = "Asia/Tokyo";
-
-// 初期設定で必ず出したい固定メッセージ（プレビュー用）
-const DEFAULT_FIXED_MESSAGE = "中止の場合は、当日の朝８時までに掲示します";
 
 function getJstStartOfTodayUtc(): Date {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -157,26 +155,13 @@ export default async function AdminNoticePage({
     redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&published=1`);
   }
 
-  // プレビュー用文言（最小：テキスト表示）
+  // 公開画面と同一HTMLをプレビューする
   const previewStatus = (currentNotice?.status ?? "初期設定") as (typeof STATUS_OPTIONS)[number];
-  const previewMessageRaw = (currentNotice?.message ?? "").trim();
-
-  const previewLines: string[] = [];
-  previewLines.push("【開催情報】");
-
-  if (previewStatus === "初期設定") {
-    previewLines.push(DEFAULT_FIXED_MESSAGE);
-    if (previewMessageRaw) previewLines.push(previewMessageRaw);
-  } else if (previewStatus === "メッセージのみ") {
-    if (previewMessageRaw) previewLines.push(previewMessageRaw);
-  } else {
-    if (previewMessageRaw) previewLines.push(previewMessageRaw);
-  }
-
-  previewLines.push("");
-  previewLines.push(`（ステータス：${previewStatus}）`);
-
-  const previewText = previewLines.join("\n");
+  const previewHtml = renderEventNoticeHtml({
+    status: previewStatus,
+    eventTitle: current ? formatEventLabel(current.date, current.title) : "",
+    message: currentNotice?.message ?? "",
+  });
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -281,7 +266,13 @@ export default async function AdminNoticePage({
                   </a>
                 </div>
 
-                <div className="border rounded p-4 text-sm whitespace-pre-wrap leading-6">{previewText}</div>
+                <div className="border rounded overflow-hidden bg-white">
+                  <iframe
+                    title="公開プレビュー"
+                    srcDoc={previewHtml}
+                    className="w-full h-64"
+                  />
+                </div>
 
                 <div className="flex justify-end">
                   <form action={publishAction}>
