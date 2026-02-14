@@ -66,7 +66,7 @@ export default async function AdminPage() {
   // イベントが無い場合でも管理画面を表示し、登録画面へ誘導する
   if (!event) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-sm p-6 text-center">
           <h1 className="text-xl font-bold text-gray-800 mb-2">管理ダッシュボード</h1>
           <p className="text-gray-600 mb-6">イベントが未登録です。</p>
@@ -95,23 +95,23 @@ export default async function AdminPage() {
   const checkedInCount = rsvps.filter((r) => r.checkedInAt != null).length;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-start mb-8">
+        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">管理ダッシュボード</h1>
             <p className="text-sm text-gray-500 mt-1">LINEミニアプリ参加状況</p>
           </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <div className="text-sm bg-white px-4 py-2 rounded shadow-sm">
+          <div className="flex flex-col items-start md:items-end gap-2 w-full md:w-auto">
+            <div className="text-sm bg-white px-4 py-2 rounded shadow-sm w-full md:w-auto">
               管理者:{" "}
               <span className="font-bold text-green-600">
                 {session?.user?.name ?? "（名前未取得）"}
               </span>
             </div>
 
-            <div className="bg-white px-4 py-3 rounded shadow-sm w-[280px]">
+            <div className="bg-white px-4 py-3 rounded shadow-sm w-full md:w-[280px]">
               <div className="text-xs text-gray-500 mb-1">現在のイベント</div>
               <div className="font-bold text-gray-900 truncate">{event.title}</div>
               <div className="text-sm text-gray-700 mt-1">開催：{formatJstDateTime(event.date)}</div>
@@ -119,49 +119,53 @@ export default async function AdminPage() {
 
             <a
               href="/admin/event"
-              className="text-xs bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition"
+              className="text-xs bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition w-full md:w-auto text-center"
             >
               イベント管理
             </a>
           </div>
         </div>
 
-        {/* 集計カード */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
-            <p className="text-gray-500 text-sm font-bold uppercase">回答総数</p>
-            <p className="text-3xl font-bold text-gray-800">
-              {totalCount} <span className="text-sm font-normal">件</span>
-            </p>
-          </div>
+        {/* 集計 */}
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-gray-50 rounded-md px-3 py-3">
+              <p className="text-gray-500 text-xs font-bold uppercase">回答総数</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-800 tabular-nums">
+                {totalCount} <span className="text-xs font-normal">件</span>
+              </p>
+            </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-green-500">
-            <p className="text-gray-500 text-sm font-bold uppercase">参加予定</p>
-            <p className="text-3xl font-bold text-green-600">
-              {joinCount} <span className="text-sm font-normal">人</span>
-            </p>
-          </div>
+            <div className="bg-gray-50 rounded-md px-3 py-3">
+              <p className="text-gray-500 text-xs font-bold uppercase">参加予定</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-600 tabular-nums">
+                {joinCount} <span className="text-xs font-normal">人</span>
+              </p>
+            </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-red-500">
-            <p className="text-gray-500 text-sm font-bold uppercase">欠席</p>
-            <p className="text-3xl font-bold text-red-600">
-              {absentCount} <span className="text-sm font-normal">人</span>
-            </p>
-          </div>
+            <div className="bg-gray-50 rounded-md px-3 py-3">
+              <p className="text-gray-500 text-xs font-bold uppercase">欠席</p>
+              <p className="text-2xl sm:text-3xl font-bold text-red-600 tabular-nums">
+                {absentCount} <span className="text-xs font-normal">人</span>
+              </p>
+            </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple-500">
-            <p className="text-gray-500 text-sm font-bold uppercase">受付済み</p>
-            <p className="text-3xl font-bold text-purple-700">
-              {checkedInCount} <span className="text-sm font-normal">人</span>
-            </p>
+            <div className="bg-gray-50 rounded-md px-3 py-3">
+              <p className="text-gray-500 text-xs font-bold uppercase">受付済み</p>
+              <p className="text-2xl sm:text-3xl font-bold text-purple-700 tabular-nums">
+                {checkedInCount} <span className="text-xs font-normal">人</span>
+              </p>
+            </div>
           </div>
         </div>
 
         {/* 参加者リスト */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+          <div className="px-4 sm:px-6 py-4 border-b bg-gray-50 flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
             <h2 className="font-bold text-gray-700">参加者リスト</h2>
-            <span className="text-xs text-gray-500">イベント: {event.title}</span>
+            <span className="text-xs text-gray-500 sm:max-w-[60%] sm:text-right sm:truncate">
+              イベント: {event.title}
+            </span>
           </div>
 
           <div className="overflow-x-auto">
@@ -256,11 +260,11 @@ export default async function AdminPage() {
             テストデータを全削除します（元に戻せません）。実行するには下の入力欄に <b>DELETE</b> と入力してください。
           </p>
 
-          <form action={resetData} className="flex gap-3 items-center">
-            <input name="confirm" placeholder="DELETE と入力" className="border rounded px-3 py-2 w-48" />
+          <form action={resetData} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <input name="confirm" placeholder="DELETE と入力" className="border rounded px-3 py-2 w-full sm:w-48" />
             <button
               type="submit"
-              className="bg-red-600 text-white font-bold px-4 py-2 rounded hover:bg-red-700"
+              className="bg-red-600 text-white font-bold px-4 py-2 rounded hover:bg-red-700 w-full sm:w-auto"
             >
               全削除を実行
             </button>
