@@ -61,7 +61,12 @@ model EventNotice {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // ★確認外面追加のため
+  isPublished     Boolean  @default(false)
+  publishedAt     DateTime?
+
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([updatedAt])
+  @@index([isPublished, publishedAt])
 }

@@ -3,12 +3,10 @@ import { requireNoticeEditorUserId } from "@/app/_lib/requireNoticeEditor";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
+import { SubmitButton } from "./_components/SubmitButton";
 
 const STATUS_OPTIONS = ["初期設定", "開催", "中止", "その他", "メッセージのみ", "非表示"] as const;
 const TZ = "Asia/Tokyo";
-
-// 初期設定で必ず出したい固定メッセージ（プレビュー用）
-const DEFAULT_FIXED_MESSAGE = "中止の場合は、当日の朝８時までに掲示します";
 
 function getJstStartOfTodayUtc(): Date {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -43,14 +41,15 @@ function formatEventLabel(date: Date, title: string) {
 export default async function AdminNoticePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ eventId?: string; saved?: string; confirm?: string; published?: string }>;
+  searchParams?: { eventId?: string; saved?: string };
 }) {
-  const sp = (await searchParams) ?? {};
+  const sp = searchParams;
 
   // 権限チェック（notice編集者のみ許可）
   // ※ /admin のログイン自体は middleware が保護している前提
+  let editorUserId = "";
   try {
-    await requireNoticeEditorUserId();
+    editorUserId = await requireNoticeEditorUserId();
   } catch (e: any) {
     const msg = String(e?.message ?? e);
 
@@ -86,7 +85,7 @@ export default async function AdminNoticePage({
     select: { id: true, title: true, date: true, isActive: true },
   });
 
-  const selectedEventId = sp.eventId;
+  const selectedEventId = sp?.eventId;
   const current =
     (selectedEventId ? events.find((e) => e.id === selectedEventId) : null) ??
     events.find((e) => e.isActive) ??
@@ -100,8 +99,7 @@ export default async function AdminNoticePage({
   // 表示用（名前）
   const session = await getServerSession(authOptions);
 
-  // 確認ボタン：下書き保存（isPublished=false）してプレビュー表示へ
-  async function confirmAction(formData: FormData) {
+  async function saveAction(formData: FormData) {
     "use server";
 
     // 保存時も編集者チェック（安全のため）
@@ -121,62 +119,17 @@ export default async function AdminNoticePage({
         status,
         message: message.trim() ? message : null,
         updatedByUserId: userId,
-        isPublished: false,
-        publishedAt: null,
       },
       update: {
         status,
         message: message.trim() ? message : null,
         updatedByUserId: userId,
-        isPublished: false,
-        publishedAt: null,
       },
     });
 
-    redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&confirm=1`);
+    // ★URLを /admin に修正
+    redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&saved=1`);
   }
-
-  // 送信ボタン：公開確定（isPublished=true）
-  async function publishAction(formData: FormData) {
-    "use server";
-
-    const userId = await requireNoticeEditorUserId();
-    const eventId = String(formData.get("eventId") ?? "");
-
-    if (!eventId) return;
-
-    await prisma.eventNotice.update({
-      where: { eventId },
-      data: {
-        isPublished: true,
-        publishedAt: new Date(),
-        updatedByUserId: userId,
-      },
-    });
-
-    redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&published=1`);
-  }
-
-  // プレビュー用文言（最小：テキスト表示）
-  const previewStatus = (currentNotice?.status ?? "初期設定") as (typeof STATUS_OPTIONS)[number];
-  const previewMessageRaw = (currentNotice?.message ?? "").trim();
-
-  const previewLines: string[] = [];
-  previewLines.push("【開催情報】");
-
-  if (previewStatus === "初期設定") {
-    previewLines.push(DEFAULT_FIXED_MESSAGE);
-    if (previewMessageRaw) previewLines.push(previewMessageRaw);
-  } else if (previewStatus === "メッセージのみ") {
-    if (previewMessageRaw) previewLines.push(previewMessageRaw);
-  } else {
-    if (previewMessageRaw) previewLines.push(previewMessageRaw);
-  }
-
-  previewLines.push("");
-  previewLines.push(`（ステータス：${previewStatus}）`);
-
-  const previewText = previewLines.join("\n");
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -204,19 +157,13 @@ export default async function AdminNoticePage({
           </div>
         </div>
 
-        {sp.published === "1" && (
-          <div className="mb-4 bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-sm">
-            公開しました（/api/public/event-notice に反映済み）
-          </div>
-        )}
-
         {!current ? (
           <div className="bg-white rounded-xl shadow p-6">
             <p className="text-gray-700">イベントが未登録です。</p>
           </div>
         ) : (
           <>
-            <form action={confirmAction} className="bg-white rounded-xl shadow p-6 space-y-5">
+            <form action={saveAction} className="bg-white rounded-xl shadow p-6 space-y-5">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">対象イベント</label>
                 <select name="eventId" defaultValue={current.id} className="w-full border rounded px-3 py-2">
@@ -256,50 +203,9 @@ export default async function AdminNoticePage({
               </div>
 
               <div className="flex items-center justify-between">
-                <button
-                  type="submit"
-                  className="text-sm bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
-                >
-                  確認
-                </button>
-
-                {sp.confirm === "1" && (
-                  <span className="text-sm text-gray-600">下に確認表示が出ています</span>
-                )}
+                <SubmitButton />
               </div>
             </form>
-
-            {sp.confirm === "1" && (
-              <div className="mt-6 bg-white rounded-xl shadow p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-800">確認（プレビュー）</h2>
-                  <a
-                    href={`/admin/notice?eventId=${encodeURIComponent(current.id)}`}
-                    className="text-sm bg-gray-200 px-3 py-2 rounded hover:bg-gray-300"
-                  >
-                    編集に戻る
-                  </a>
-                </div>
-
-                <div className="border rounded p-4 text-sm whitespace-pre-wrap leading-6">{previewText}</div>
-
-                <div className="flex justify-end">
-                  <form action={publishAction}>
-                    <input type="hidden" name="eventId" value={current.id} />
-                    <button
-                      type="submit"
-                      className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    >
-                      送信（公開）
-                    </button>
-                  </form>
-                </div>
-
-                <div className="text-xs text-gray-500">
-                  ※「確認」は下書き保存のみです。公開は「送信（公開）」で確定します。
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>

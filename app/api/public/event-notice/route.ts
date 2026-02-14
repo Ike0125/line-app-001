@@ -1,4 +1,5 @@
 import { prisma } from "@/app/_lib/prisma";
+import { renderEventNoticeHtml } from "@/app/_lib/eventNoticeRender";
 
 export const revalidate = 0;
 
@@ -24,7 +25,7 @@ function statusStyle(status: string) {
     case "その他":
       return { bg: "#e8f0fe", fg: "#174ea6", border: "#4285f4", label: "【その他】" };
     case "初期設定":
-      return { bg: "#f3f4f6", fg: "#111827", border: "#9ca3af", label: "【お知らせ】" };
+      return { bg: "#f3f4f6", fg: "#111827", border: "#9ca3af", label: "【開催情報】" };
     case "メッセージのみ":
       return { bg: "#fff7ed", fg: "#7c2d12", border: "#fb923c", label: "【お知らせ】" };
     case "非表示":
@@ -65,6 +66,8 @@ function formatEventLabel(date: Date | string | null | undefined, title: string)
   return `${md}(${wd}) ${title}`;
 }
 
+const DEFAULT_FIXED_MESSAGE = "中止の場合は、当日の朝８時までに掲示します";
+
 function renderHtml(params: {
   status: string;
   eventTitle?: string | null;
@@ -80,9 +83,19 @@ function renderHtml(params: {
 
   // 表示ルール（現GAS互換）
   const showEvent = status !== "初期設定" && status !== "メッセージのみ";
-  const showMessage = status !== "初期設定";
+  const showMessage = status !== "メッセージのみ"; // 初期設定でもメッセージ枠を出す
+
+  // 初期設定のときは固定メッセージを必ず表示（既存メッセージがあれば後ろに追記）
+  const mergedMessage =
+    status === "初期設定"
+      ? (message?.trim()
+          ? `${DEFAULT_FIXED_MESSAGE}\n${message}`
+          : DEFAULT_FIXED_MESSAGE)
+      : (message ?? "");
+
+
   const safeEvent = eventTitle ? escapeHtml(eventTitle) : "";
-  const safeMsg = message ? escapeHtml(message).replaceAll("\n", "<br>") : "";
+  const safeMsg = mergedMessage ? escapeHtml(mergedMessage).replaceAll("\n", "<br>") : "";
 
 return `<!doctype html>
 <html lang="ja">
@@ -119,11 +132,13 @@ return `<!doctype html>
 }
 
 export async function GET() {
-  // 表示対象：最新に更新された開催通知（予約のisActiveとは切り離す）
+  // 公開済み情報だけを取得する
   const notice = await prisma.eventNotice.findFirst({
-    orderBy: { updatedAt: "desc" },
+    where: { isPublished: true },
+    orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
     include: { event: true },
   });
+
 
   // 通知が1件も無い場合はブランク
   if (!notice) {
