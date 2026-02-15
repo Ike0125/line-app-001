@@ -172,11 +172,13 @@ export default async function AdminNoticePage({
             <p className="text-sm text-gray-500 mt-1">
               編集者：{session?.user?.name ?? "（名前未取得）"}
             </p>
+            {/*
             <div className="text-xs text-gray-500">
               埋め込みURL：<span className="font-mono">/api/public/event-notice</span>
             </div>
+            */}
           </div>
-
+          {/*
           <div className="flex gap-2">
             <a
               href="/api/public/event-notice"
@@ -187,6 +189,7 @@ export default async function AdminNoticePage({
               公開表示を確認
             </a>
           </div>
+          */}
         </div>
 
         {sp.published === "1" && (

@@ -1,12 +1,37 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { signIn, signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from 'react';
+import { signOut, useSession } from "next-auth/react";
+
+type PreviewMode = 'normal' | 'mobile';
+
+const PREVIEW_STORAGE_KEY = 'preview-mode';
+const PREVIEW_EVENT_NAME = 'preview-mode-change';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(() => {
+    if (typeof window === 'undefined') return 'normal';
+    const savedMode = window.localStorage.getItem(PREVIEW_STORAGE_KEY);
+    return savedMode === 'mobile' ? 'mobile' : 'normal';
+  });
   const { data: session } = useSession();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    document.body.dataset.previewMode = previewMode;
+  }, [previewMode]);
+
+  const applyPreviewMode = (mode: PreviewMode) => {
+    setPreviewMode(mode);
+    localStorage.setItem(PREVIEW_STORAGE_KEY, mode);
+    window.dispatchEvent(new Event(PREVIEW_EVENT_NAME));
+  };
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -16,20 +41,43 @@ export default function Sidebar() {
     setIsOpen(false);
   };
 
+  const togglePreviewMode = () => {
+    const nextMode = previewMode === 'normal' ? 'mobile' : 'normal';
+    applyPreviewMode(nextMode);
+    setIsOpen(false);
+  };
+
   return (
     <>
-      {/* ハンバーガーメニューボタン（常時表示、固定配置） */}
-      <button
-        onClick={toggleSidebar}
-        className="md:hidden fixed top-4 left-4 z-50 bg-slate-900 text-white p-2 rounded hover:bg-slate-800 transition-colors"
-        aria-label="メニュー切り替え"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-gray-100/95 backdrop-blur border-b border-gray-200">
+        <div className="h-full flex items-center justify-between px-3">
+          <button
+            onClick={toggleSidebar}
+            className="bg-slate-900 text-white p-2 rounded hover:bg-slate-800 transition-colors"
+            aria-label="メニュー切り替え"
+            type="button"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
 
-      {/* オーバーレイ（サイドバー開時、クリックで閉じる）*/}
+          <div className="flex-1" />
+
+          <button
+            className="bg-white text-slate-800 border border-slate-300 p-2 rounded hover:bg-slate-50 transition-colors"
+            aria-label="操作メニュー"
+            type="button"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="12" cy="19" r="2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       {isOpen && (
         <div
           onClick={closeSidebar}
@@ -37,24 +85,22 @@ export default function Sidebar() {
         />
       )}
 
-      {/* サイドバー本体 */}
       <aside className={`
         fixed top-0 left-0 h-screen w-64 bg-slate-900 text-white flex flex-col shadow-lg
         transition-transform duration-300 z-40
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
       `}>
-        {/* タイトル */}
         <div className="p-6 border-b border-slate-700 pt-8 md:pt-6 flex items-center md:block">
           <div className="w-10 md:w-auto flex-shrink-0 md:hidden" />
           <h2 className="text-xl font-bold tracking-wider flex-1 md:flex-none">LINE Connect</h2>
         </div>
-        {/* ナビゲーションメニュー */}
+
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
             <li>
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
@@ -62,8 +108,8 @@ export default function Sidebar() {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/admin/notice" 
+              <Link
+                href="/admin/notice"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
@@ -71,8 +117,8 @@ export default function Sidebar() {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/admin/events" 
+              <Link
+                href="/admin/events"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
@@ -80,8 +126,8 @@ export default function Sidebar() {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/admin/line-users" 
+              <Link
+                href="/admin/line-users"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
@@ -89,8 +135,8 @@ export default function Sidebar() {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/admin" 
+              <Link
+                href="/admin"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
@@ -98,42 +144,51 @@ export default function Sidebar() {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/line-app/checkin" 
+              <Link
+                href="/line-app/checkin"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
                 <span>📅</span> 当日受付
               </Link>
             </li>
-
             <li>
-              <Link 
-                href="/line-app" 
+              <Link
+                href="/line-app"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>📱</span> LINE予約
+                <span>📱</span> ユーザー画面
               </Link>
             </li>
-
             <li>
-              <Link 
-                href="/line-app/history" 
+              <Link
+                href="https://swf1000.jimdofree.com/"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
               >
-                <span>🗄️</span> 参加履歴
+                <span>🗄️</span> SWFテスト
               </Link>
             </li>
+            {isMounted && (
+              <li>
+                <button
+                  type="button"
+                  onClick={togglePreviewMode}
+                  aria-pressed={previewMode === 'mobile'}
+                  className="w-full text-left p-3 rounded bg-slate-800 hover:bg-slate-700 transition-colors duration-200 flex items-center gap-3"
+                >
+                  <span>{previewMode === 'mobile' ? '🖥️' : '📲'}</span>
+                  {previewMode === 'mobile' ? '通常表示に戻す' : 'スマホ表示テスト'}
+                </button>
+              </li>
+            )}
           </ul>
         </nav>
 
-        {/* ユーザープロフィール（下部に固定） */}
         <div className="p-4 border-t border-slate-700">
           {session ? (
             <>
-              {/* ログイン済み状態 */}
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-lg">
                   👤
@@ -152,9 +207,8 @@ export default function Sidebar() {
             </>
           ) : (
             <>
-              {/* ログイン前状態 */}
               <p className="text-xs text-slate-300 mb-3">ログインしていません</p>
-              <Link 
+              <Link
                 href="/api/auth/signin"
                 className="block w-full text-center bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-3 rounded transition-colors font-semibold"
                 onClick={closeSidebar}
@@ -165,7 +219,6 @@ export default function Sidebar() {
           )}
         </div>
 
-        {/* フッター */}
         <div className="p-4 border-t border-slate-700 text-xs text-slate-400 text-center">
           © 2026 My App
         </div>

@@ -97,21 +97,21 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-6">
+        <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">管理ダッシュボード</h1>
             <p className="text-sm text-gray-500 mt-1">LINEミニアプリ参加状況</p>
           </div>
 
-          <div className="flex flex-col items-start md:items-end gap-2 w-full md:w-auto">
-            <div className="text-sm bg-white px-4 py-2 rounded shadow-sm w-full md:w-auto">
+          <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
+            <div className="w-full rounded bg-white px-4 py-2 text-sm shadow-sm xl:w-auto">
               管理者:{" "}
               <span className="font-bold text-green-600">
                 {session?.user?.name ?? "（名前未取得）"}
               </span>
             </div>
 
-            <div className="bg-white px-4 py-3 rounded shadow-sm w-full md:w-[280px]">
+            <div className="w-full rounded bg-white px-4 py-3 shadow-sm xl:w-[320px]">
               <div className="text-xs text-gray-500 mb-1">現在のイベント</div>
               <div className="font-bold text-gray-900 truncate">{event.title}</div>
               <div className="text-sm text-gray-700 mt-1">開催：{formatJstDateTime(event.date)}</div>
@@ -119,7 +119,7 @@ export default async function AdminPage() {
 
             <a
               href="/admin/event"
-              className="text-xs bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition w-full md:w-auto text-center"
+              className="w-full rounded bg-blue-600 px-4 py-2 text-center text-xs font-bold text-white transition hover:bg-blue-700 xl:w-auto"
             >
               イベント管理
             </a>

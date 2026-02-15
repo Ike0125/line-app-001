@@ -31,8 +31,29 @@ body {
 
 /* レスポンシブ対応 */
 @media (max-width: 768px) {
-  /* スマホ時、ハンバーガーボタンのため上部に余白を追加 */
   body {
     padding-top: 0;
   }
+}
+
+/* デスクトップ上でのスマホ実寸プレビュー */
+[data-preview-shell] {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: #cbd5e1;
+}
+
+[data-preview-phone] {
+  width: min(393px, 100%);
+  height: min(852px, calc(100vh - 24px));
+  overflow: hidden;
+  border-radius: 26px;
+  background: #ffffff;
+  border: 10px solid #111827;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.32);
 }

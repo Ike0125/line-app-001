@@ -5,11 +5,28 @@ import { revalidatePath } from "next/cache";
 export default async function EventEditPage({
   params,
 }: {
-  params: { id: string };
+  params: { id: string } | Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const resolvedParams = await Promise.resolve(params);
+  const id = String(resolvedParams?.id ?? "").trim();
 
   // middleware が /admin/* を保護するので、ここでの認証・権限チェックは不要
+
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-sm text-center">
+          <h1 className="text-lg font-bold text-gray-800 mb-2">イベントが見つかりません</h1>
+          <a
+            href="/admin/event"
+            className="inline-block mt-4 bg-blue-600 text-white font-bold py-2 px-4 rounded-xl"
+          >
+            一覧へ戻る
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) {

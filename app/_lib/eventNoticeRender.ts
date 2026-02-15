@@ -12,9 +12,9 @@ function escapeHtml(s: string) {
 function statusStyle(status: string) {
   switch (status) {
     case "開催":
-      return { bg: "#e6f4ea", fg: "#1e4620", border: "#34a853", label: "【本日のイベントは開催します】" };
+      return { bg: "#e6f4ea", fg: "#1e4620", border: "#34a853", label: "【本日：イベント開催】" };
     case "中止":
-      return { bg: "#fce8e6", fg: "#a50e0e", border: "#ea4335", label: "【本日のイベントは中止です】" };
+      return { bg: "#fce8e6", fg: "#a50e0e", border: "#ea4335", label: "【本日：イベント中止】" };
     case "その他":
       return { bg: "#e8f0fe", fg: "#174ea6", border: "#4285f4", label: "【その他】" };
     case "初期設定":
