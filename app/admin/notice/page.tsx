@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 
-const STATUS_OPTIONS = ["初期設定", "開催", "中止", "その他", "メッセージのみ", "非表示"] as const;
+const STATUS_OPTIONS = ["初期設定", "開催", "中止", "お知らせ", "非表示"] as const;
 const TZ = "Asia/Tokyo";
 
 function getJstStartOfTodayUtc(): Date {
@@ -95,6 +95,10 @@ export default async function AdminNoticePage({
     ? await prisma.eventNotice.findUnique({ where: { eventId: current.id } })
     : null;
 
+  const draftStatus = (currentNotice?.draftStatus ?? currentNotice?.status ?? "初期設定") as
+    (typeof STATUS_OPTIONS)[number];
+  const draftMessage = currentNotice?.draftMessage ?? currentNotice?.message ?? "";
+
   // 表示用（名前）
   const session = await getServerSession(authOptions);
 
@@ -112,24 +116,45 @@ export default async function AdminNoticePage({
     if (!eventId) return;
     if (!STATUS_OPTIONS.includes(status as any)) return;
 
-    await prisma.eventNotice.upsert({
-      where: { eventId },
-      create: {
-        eventId,
-        status,
-        message: message.trim() ? message : null,
-        updatedByUserId: userId,
-        isPublished: false,
-        publishedAt: null,
-      },
-      update: {
-        status,
-        message: message.trim() ? message : null,
-        updatedByUserId: userId,
-        isPublished: false,
-        publishedAt: null,
-      },
-    });
+    const trimmedMessage = message.trim() ? message.trim() : null;
+    const existing = await prisma.eventNotice.findUnique({ where: { eventId } });
+
+    if (!existing) {
+      await prisma.eventNotice.create({
+        data: {
+          eventId,
+          status,
+          message: trimmedMessage,
+          draftStatus: status,
+          draftMessage: trimmedMessage,
+          updatedByUserId: userId,
+          isPublished: false,
+          publishedAt: null,
+        },
+      });
+    } else if (existing.isPublished) {
+      await prisma.eventNotice.update({
+        where: { eventId },
+        data: {
+          draftStatus: status,
+          draftMessage: trimmedMessage,
+          updatedByUserId: userId,
+        },
+      });
+    } else {
+      await prisma.eventNotice.update({
+        where: { eventId },
+        data: {
+          status,
+          message: trimmedMessage,
+          draftStatus: status,
+          draftMessage: trimmedMessage,
+          updatedByUserId: userId,
+          isPublished: false,
+          publishedAt: null,
+        },
+      });
+    }
 
     redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&confirm=1`);
   }
@@ -143,9 +168,17 @@ export default async function AdminNoticePage({
 
     if (!eventId) return;
 
+    const existing = await prisma.eventNotice.findUnique({ where: { eventId } });
+
+    if (!existing) return;
+
     await prisma.eventNotice.update({
       where: { eventId },
       data: {
+        status: existing.draftStatus ?? existing.status,
+        message: existing.draftMessage ?? existing.message,
+        draftStatus: null,
+        draftMessage: null,
         isPublished: true,
         publishedAt: new Date(),
         updatedByUserId: userId,
@@ -156,11 +189,11 @@ export default async function AdminNoticePage({
   }
 
   // 公開画面と同一HTMLをプレビューする
-  const previewStatus = (currentNotice?.status ?? "初期設定") as (typeof STATUS_OPTIONS)[number];
+  const previewStatus = draftStatus;
   const previewHtml = renderEventNoticeHtml({
     status: previewStatus,
     eventTitle: current ? formatEventLabel(current.date, current.title) : "",
-    message: currentNotice?.message ?? "",
+    message: draftMessage,
   });
 
   return (
@@ -224,7 +257,7 @@ export default async function AdminNoticePage({
                       type="radio"
                       name="status"
                       value={s}
-                      defaultChecked={(currentNotice?.status ?? "初期設定") === s}
+                      defaultChecked={draftStatus === s}
                       className="accent-blue-600"
                     />
                     <span>{s}</span>
@@ -236,7 +269,7 @@ export default async function AdminNoticePage({
                 <label className="block text-sm font-bold text-gray-700 mb-2">メッセージ（任意）</label>
                 <textarea
                   name="message"
-                  defaultValue={currentNotice?.message ?? ""}
+                  defaultValue={draftMessage}
                   rows={4}
                   className="w-full border rounded px-3 py-2 h-28"
                   placeholder="例：雨天のため中止です／現地の路面が滑りやすいのでご注意ください"
@@ -261,12 +294,25 @@ export default async function AdminNoticePage({
               <div className="mt-6 bg-white rounded-xl shadow p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-800">確認（プレビュー）</h2>
+                  <div className="flex justify-end">
+                    <form action={publishAction}>
+                      <input type="hidden" name="eventId" value={current.id} />
+                      <button
+                        type="submit"
+                        className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                      >
+                        送信（公開）
+                      </button>
+                    </form>
+                  </div>
+                  {/*
                   <a
                     href={`/admin/notice?eventId=${encodeURIComponent(current.id)}`}
                     className="text-sm bg-gray-200 px-3 py-2 rounded hover:bg-gray-300"
                   >
                     編集に戻る
                   </a>
+                  */}
                 </div>
 
                 <div className="border rounded overflow-hidden bg-white">
@@ -276,19 +322,6 @@ export default async function AdminNoticePage({
                     className="w-full h-64"
                   />
                 </div>
-
-                <div className="flex justify-end">
-                  <form action={publishAction}>
-                    <input type="hidden" name="eventId" value={current.id} />
-                    <button
-                      type="submit"
-                      className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    >
-                      送信（公開）
-                    </button>
-                  </form>
-                </div>
-
                 <div className="text-xs text-gray-500">
                   ※「確認」は下書き保存のみです。公開は「送信（公開）」で確定します。
                 </div>

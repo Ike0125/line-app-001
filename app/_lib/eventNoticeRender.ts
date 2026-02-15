@@ -1,4 +1,28 @@
+// ===============================
+// SWF event notice HTML renderer
+// （状態表ベース実装）
+// ===============================
+
 const DEFAULT_FIXED_MESSAGE = "中止の場合は、当日の朝８時までに掲示します";
+
+type Status = "開催" | "中止" | "初期設定" | "お知らせ" | "非表示";
+
+// 状態ごとの表示仕様（= 仕様そのもの）
+const STATUS_RULES: Record<
+  Status,
+  {
+    showEventTitle: boolean;        //イベントタイトル
+    showMessage: boolean;          //message+prependFixedMessage
+    prependFixedMessage: boolean;  //初期設定用の固定文書
+    message: boolean;              //message
+  }
+> = {
+  開催:     { showEventTitle: true,  showMessage: true,  prependFixedMessage: false, message: true  },
+  中止:     { showEventTitle: true,  showMessage: true,  prependFixedMessage: false, message: true  },
+  初期設定: { showEventTitle: false, showMessage: true,  prependFixedMessage: true,  message: false }, // 例：入力文は出さない
+  お知らせ: { showEventTitle: false, showMessage: true,  prependFixedMessage: false, message: true  },
+  非表示:   { showEventTitle: false, showMessage: false, prependFixedMessage: false, message: false },
+};
 
 function escapeHtml(s: string) {
   return s
@@ -9,22 +33,32 @@ function escapeHtml(s: string) {
     .replaceAll("'", "&#39;");
 }
 
-function statusStyle(status: string) {
+function statusStyle(status: Status) {
   switch (status) {
     case "開催":
-      return { bg: "#e6f4ea", fg: "#1e4620", border: "#34a853", label: "【本日：イベント開催】" };
+      return { bg: "#e6f4ea", fg: "#1e4620", border: "#34a853", label: "【本日：イベント開催します】" };
     case "中止":
-      return { bg: "#fce8e6", fg: "#a50e0e", border: "#ea4335", label: "【本日：イベント中止】" };
-    case "その他":
-      return { bg: "#e8f0fe", fg: "#174ea6", border: "#4285f4", label: "【その他】" };
+      return { bg: "#fce8e6", fg: "#a50e0e", border: "#ea4335", label: "【本日：イベント中止します】" };
     case "初期設定":
       return { bg: "#f3f4f6", fg: "#111827", border: "#9ca3af", label: "【開催情報】" };
-    case "メッセージのみ":
+    case "お知らせ":
       return { bg: "#fff7ed", fg: "#7c2d12", border: "#fb923c", label: "【お知らせ】" };
     case "非表示":
       return { bg: "#ffffff", fg: "#111827", border: "#ffffff", label: "" };
+  }
+}
+
+// 不正なstatusを防御（未知値は初期設定扱い）
+function normalizeStatus(status: string): Status {
+  switch (status) {
+    case "開催":
+    case "中止":
+    case "初期設定":
+    case "お知らせ":
+    case "非表示":
+      return status;
     default:
-      return { bg: "#f3f4f6", fg: "#111827", border: "#9ca3af", label: escapeHtml(status) };
+      return "初期設定"; // 安全側フォールバック
   }
 }
 
@@ -33,24 +67,36 @@ export function renderEventNoticeHtml(params: {
   eventTitle?: string | null;
   message?: string | null;
 }) {
-  const { status, eventTitle, message } = params;
+  const status = normalizeStatus(params.status);
+  const { eventTitle, message } = params;
 
+  const rule = STATUS_RULES[status];
+
+  // 非表示は完全非表示
   if (status === "非表示") {
-    return "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>";
+    return '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>';
   }
 
   const st = statusStyle(status);
-  const showEvent = status !== "初期設定" && status !== "メッセージのみ";
-  const showMessage = status !== "メッセージのみ";
-  const mergedMessage =
-    status === "初期設定"
-      ? (message?.trim()
-          ? `${DEFAULT_FIXED_MESSAGE}\n${message}`
-          : DEFAULT_FIXED_MESSAGE)
-      : (message ?? "");
 
-  const safeEvent = eventTitle ? escapeHtml(eventTitle) : "";
-  const safeMsg = mergedMessage ? escapeHtml(mergedMessage).replaceAll("\n", "<br>") : "";
+  // 入力 message は “入力” として扱い、表示するかは rule.message で決める
+  const userMessage = rule.message ? (message ?? "") : "";
+
+  const mergedMessage = rule.showMessage
+    ? rule.prependFixedMessage
+      ? userMessage.trim()
+        ? `${DEFAULT_FIXED_MESSAGE}\n${userMessage}`
+        : DEFAULT_FIXED_MESSAGE
+      : userMessage
+    : "";
+
+  const safeEvent =
+    rule.showEventTitle && eventTitle ? escapeHtml(eventTitle) : "";
+
+  const safeMsg =
+    rule.showMessage && mergedMessage
+      ? escapeHtml(mergedMessage).replaceAll("\n", "<br>")
+      : "";
 
   return `<!doctype html>
 <html lang="ja">
@@ -78,8 +124,8 @@ export function renderEventNoticeHtml(params: {
   <div class="wrap">
     <div class="box">
       <div class="status">${escapeHtml(st.label)}</div>
-      ${showEvent && safeEvent ? `<div class="event">${safeEvent}</div>` : ""}
-      ${showMessage && safeMsg ? `<div class="msg">${safeMsg}</div>` : ""}
+      ${safeEvent ? `<div class="event">${safeEvent}</div>` : ""}
+      ${safeMsg ? `<div class="msg">${safeMsg}</div>` : ""}
     </div>
   </div>
 </body>

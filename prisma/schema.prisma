@@ -57,6 +57,8 @@ model EventNotice {
   eventId         String   @unique
   status          String
   message         String? // 任意
+  draftStatus     String? // 確認用の下書き
+  draftMessage    String? // 確認用の下書き
   updatedByUserId String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
