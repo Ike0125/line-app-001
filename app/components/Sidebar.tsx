@@ -12,6 +12,7 @@ const PREVIEW_EVENT_NAME = 'preview-mode-change';
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('normal');
   const { data: session } = useSession();
 
@@ -39,6 +40,16 @@ export default function Sidebar() {
 
   const closeSidebar = () => {
     setIsOpen(false);
+    setIsMenuOpen(false);
+  };
+
+  const toggleMenu = () => {
+    setIsMenuOpen((prev) => !prev);
+  };
+
+  const handleReload = () => {
+    setIsMenuOpen(false);
+    window.location.reload();
   };
 
   const togglePreviewMode = () => {
@@ -49,15 +60,54 @@ export default function Sidebar() {
 
   return (
     <>
-      <button
-        onClick={toggleSidebar}
-        className="md:hidden fixed top-4 left-4 z-50 bg-slate-900 text-white p-2 rounded hover:bg-slate-800 transition-colors"
-        aria-label="メニュー切り替え"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-gray-100/95 backdrop-blur border-b border-gray-200">
+        <div className="h-full flex items-center justify-between px-3">
+          <button
+            onClick={toggleSidebar}
+            className="bg-gray-700/70 text-white p-2 rounded hover:bg-gray-700/90 transition-colors"
+            aria-label="メニュー切り替え"
+            type="button"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <div className="flex-1" />
+
+          <div className="relative">
+            <button
+              className="bg-white text-slate-800 p-2 rounded hover:bg-slate-50 transition-colors"
+              aria-label="操作メニュー"
+              aria-expanded={isMenuOpen}
+              aria-haspopup="menu"
+              type="button"
+              onClick={toggleMenu}
+            >
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+            {isMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 mt-2 w-32 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={handleReload}
+                >
+                  更新
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {isOpen && (
         <div

@@ -3,7 +3,8 @@ import { requireNoticeEditorUserId } from "@/app/_lib/requireNoticeEditor";
 import { renderEventNoticeHtml } from "@/app/_lib/eventNoticeRender";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
+import NoticeForm from "./NoticeForm";
+import PublishButton from "./PublishButton";
 
 const STATUS_OPTIONS = ["初期設定", "開催", "中止", "お知らせ", "非表示"] as const;
 const TZ = "Asia/Tokyo";
@@ -102,91 +103,10 @@ export default async function AdminNoticePage({
   // 表示用（名前）
   const session = await getServerSession(authOptions);
 
-  // 確認ボタン：下書き保存（isPublished=false）してプレビュー表示へ
-  async function confirmAction(formData: FormData) {
-    "use server";
-
-    // 保存時も編集者チェック（安全のため）
-    const userId = await requireNoticeEditorUserId();
-
-    const eventId = String(formData.get("eventId") ?? "");
-    const status = String(formData.get("status") ?? "");
-    const message = String(formData.get("message") ?? "");
-
-    if (!eventId) return;
-    if (!STATUS_OPTIONS.includes(status as any)) return;
-
-    const trimmedMessage = message.trim() ? message.trim() : null;
-    const existing = await prisma.eventNotice.findUnique({ where: { eventId } });
-
-    if (!existing) {
-      await prisma.eventNotice.create({
-        data: {
-          eventId,
-          status,
-          message: trimmedMessage,
-          draftStatus: status,
-          draftMessage: trimmedMessage,
-          updatedByUserId: userId,
-          isPublished: false,
-          publishedAt: null,
-        },
-      });
-    } else if (existing.isPublished) {
-      await prisma.eventNotice.update({
-        where: { eventId },
-        data: {
-          draftStatus: status,
-          draftMessage: trimmedMessage,
-          updatedByUserId: userId,
-        },
-      });
-    } else {
-      await prisma.eventNotice.update({
-        where: { eventId },
-        data: {
-          status,
-          message: trimmedMessage,
-          draftStatus: status,
-          draftMessage: trimmedMessage,
-          updatedByUserId: userId,
-          isPublished: false,
-          publishedAt: null,
-        },
-      });
-    }
-
-    redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&confirm=1`);
-  }
-
-  // 送信ボタン：公開確定（isPublished=true）
-  async function publishAction(formData: FormData) {
-    "use server";
-
-    const userId = await requireNoticeEditorUserId();
-    const eventId = String(formData.get("eventId") ?? "");
-
-    if (!eventId) return;
-
-    const existing = await prisma.eventNotice.findUnique({ where: { eventId } });
-
-    if (!existing) return;
-
-    await prisma.eventNotice.update({
-      where: { eventId },
-      data: {
-        status: existing.draftStatus ?? existing.status,
-        message: existing.draftMessage ?? existing.message,
-        draftStatus: null,
-        draftMessage: null,
-        isPublished: true,
-        publishedAt: new Date(),
-        updatedByUserId: userId,
-      },
-    });
-
-    redirect(`/admin/notice?eventId=${encodeURIComponent(eventId)}&published=1`);
-  }
+  const eventOptions = events.map((e) => ({
+    id: e.id,
+    label: formatEventLabel(e.date, e.title),
+  }));
 
   // 公開画面と同一HTMLをプレビューする
   const previewStatus = draftStatus;
@@ -237,74 +157,20 @@ export default async function AdminNoticePage({
           </div>
         ) : (
           <>
-            <form action={confirmAction} className="bg-white rounded-xl shadow p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">対象イベント</label>
-                <select name="eventId" defaultValue={current.id} className="w-full border rounded px-3 py-2">
-                  {events.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {formatEventLabel(e.date, e.title)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700 mb-2">通知ステータス</label>
-                {STATUS_OPTIONS.map((s) => (
-                  <label key={s} className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="status"
-                      value={s}
-                      defaultChecked={draftStatus === s}
-                      className="accent-blue-600"
-                    />
-                    <span>{s}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">メッセージ（任意）</label>
-                <textarea
-                  name="message"
-                  defaultValue={draftMessage}
-                  rows={4}
-                  className="w-full border rounded px-3 py-2 h-28"
-                  placeholder="例：雨天のため中止です／現地の路面が滑りやすいのでご注意ください"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <button
-                  type="submit"
-                  className="text-sm bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
-                >
-                  確認
-                </button>
-
-                {sp.confirm === "1" && (
-                  <span className="text-sm text-gray-600">下に確認表示が出ています</span>
-                )}
-              </div>
-            </form>
+            <NoticeForm
+              eventOptions={eventOptions}
+              currentId={current.id}
+              statusOptions={STATUS_OPTIONS}
+              currentStatus={draftStatus}
+              currentMessage={draftMessage}
+              showConfirmHint={sp.confirm === "1"}
+            />
 
             {sp.confirm === "1" && (
               <div className="mt-6 bg-white rounded-xl shadow p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-800">確認（プレビュー）</h2>
-                  <div className="flex justify-end">
-                    <form action={publishAction}>
-                      <input type="hidden" name="eventId" value={current.id} />
-                      <button
-                        type="submit"
-                        className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                      >
-                        送信（公開）
-                      </button>
-                    </form>
-                  </div>
+                  <h2 className="text-lg font-bold text-gray-800">確認画面</h2>
+                  <PublishButton eventId={current.id} />
                   {/*
                   <a
                     href={`/admin/notice?eventId=${encodeURIComponent(current.id)}`}
