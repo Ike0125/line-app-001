@@ -19,8 +19,15 @@ export default function SignInInner() {
           LINEでログイン
         </button>
 
+        <button
+          onClick={() => signIn("google", { callbackUrl })}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors mb-4"
+        >
+          Googleでログイン
+        </button>
+
         <p className="text-center text-gray-600 text-sm mt-4">
-          LINEアカウントでログインしてください
+          LINEまたはGoogleアカウントでログインしてください
         </p>
       </div>
     </div>

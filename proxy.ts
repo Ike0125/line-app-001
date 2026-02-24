@@ -25,18 +25,23 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ★ 管理者判定は token.sub を使う（LINEの userId が入る）
-  const uid = token.sub; // string | undefined
+  // LINE User ID 判定（互換キー含む）
+  const uid = token.sub;
+  const adminUserIds = parseIds(
+    process.env.ADMIN_USER_ID ??
+      process.env.ADMIN_LINE_USER_IDS ??
+      process.env.ADMIN_LINE_USER_ID
+  );
+  const isLineAdmin = !!uid && adminUserIds.includes(uid);
 
-  // ADMIN_LINE_USER_ID 互換も残す
-  const raw =
-    process.env.ADMIN_LINE_USER_IDS ??
-    process.env.ADMIN_LINE_USER_ID ??
-    "";
+  // Google Email 判定
+  const adminEmails = parseIds(process.env.ADMIN_USER_EMAILS).map((s) =>
+    s.toLowerCase()
+  );
+  const tokenEmail = String(token.email ?? "").toLowerCase().trim();
+  const isEmailAdmin = !!tokenEmail && adminEmails.includes(tokenEmail);
 
-  const allow = parseIds(raw);
-
-  if (!uid || allow.length === 0 || !allow.includes(uid)) {
+  if (!isLineAdmin && !isEmailAdmin) {
     return NextResponse.redirect(new URL("/line-app", req.url));
   }
 

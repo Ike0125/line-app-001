@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { prisma } from "@/app/_lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { isAdmin } from "@/app/_lib/auth-utils";
 
 function jstRange(startDate: string, endDate: string) {
   const start = new Date(`${startDate}T00:00:00+09:00`);
@@ -10,6 +13,12 @@ function jstRange(startDate: string, endDate: string) {
 }
 
 export async function POST(req: Request) {
+  // 管理者チェック
+  const session = await getServerSession(authOptions);
+  if (!isAdmin(session)) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
   try {
     // ✅ req はここでしか使えない
     let payload: any;

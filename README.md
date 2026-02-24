@@ -130,7 +130,43 @@ UI は最小限とし、**機能検証を優先**しています。
 - `NEXTAUTH_SECRET`
 - `LINE_CLIENT_ID`
 - `LINE_CLIENT_SECRET`
-- `ADMIN_USER_ID`
+- `GOOGLE_CLIENT_ID` ※Google認証用
+- `GOOGLE_CLIENT_SECRET` ※Google認証用
+- `ADMIN_USER_ID` ※LINE User ID（カンマ区切りで複数指定可）
+- `ADMIN_USER_EMAILS` ※Google認証用（カンマ区切りで複数指定可）
+- `NOTICE_EDITOR_USER_IDS` ※LINE User ID（カンマ区切りで複数指定可）
+- `NOTICE_EDITOR_EMAILS` ※Google認証用（カンマ区切りで複数指定可）
+
+---
+
+## 認証システム
+
+### LINE 認証
+- LINE ミニアプリユーザー向けの認証
+- LINE User ID で識別
+- `session.user.id` に LINE User ID が格納される
+
+### Google 認証（管理者向け）
+- 管理画面へのアクセス用
+- メールアドレスで識別
+- `session.user.email` に Google Email が格納される
+
+### 権限管理（環境変数方式）
+
+#### 管理者権限
+- **LINE**: `ADMIN_USER_ID` にカンマ区切りでLINE User IDを記載
+- **Google**: `ADMIN_USER_EMAILS` にカンマ区切りでメールアドレスを記載
+- 両方の認証方式で管理者としてログイン可能
+
+#### 通知編集権限
+- **LINE**: `NOTICE_EDITOR_USER_IDS` にカンマ区切りでLINE User IDを記載
+- **Google**: `NOTICE_EDITOR_EMAILS` にカンマ区切りでメールアドレスを記載
+- 管理者は自動的に通知編集権限も持つ
+
+### 権限チェック
+- `app/_lib/auth-utils.ts` に集約
+- `isAdmin(session)`: 管理者かどうかを判定
+- `canEditNotice(session)`: 通知編集権限を持つかを判定
 
 ---
 

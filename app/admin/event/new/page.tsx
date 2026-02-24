@@ -3,14 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { isAdmin } from "@/app/_lib/auth-utils";
 
 const prisma = new PrismaClient();
-
-function isAdmin(session: any) {
-  const adminId = process.env.ADMIN_USER_ID;
-  const uid = (session?.user as any)?.id;
-  return !!adminId && uid === adminId;
-}
 
 export default async function EventNewPage() {
   const session = await getServerSession(authOptions);

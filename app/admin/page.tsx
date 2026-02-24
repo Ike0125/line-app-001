@@ -1,17 +1,25 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
 import { formatJstDateTime } from "@/app/_lib/formatDate";
 
-export default async function AdminPage() {
-  // middleware が /admin/* を保護する前提なので、ここでは「表示用」にセッションを読むだけ
-  const session = await getServerSession(authOptions);
+const PAGE_SIZE = 25;
 
+type AdminPageProps = {
+  searchParams?: {
+    page?: string;
+  };
+};
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
   // 1) イベント情報の取得
-  const event =
-    (await prisma.event.findFirst({ where: { isActive: true } })) ??
-    (await prisma.event.findFirst({ orderBy: { deadline: "desc" } }));
+  const event = await prisma.event.findFirst({
+    orderBy: [{ isActive: "desc" }, { deadline: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      date: true,
+    },
+  });
 
   // ★追加機能: データ削除処理 (Server Action)
   async function resetData(formData: FormData) {
@@ -82,17 +90,35 @@ export default async function AdminPage() {
     );
   }
 
-  // 2) 参加者データの取得
+  const rawPage = Number(searchParams?.page ?? "1");
+  const safePage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+
+  const [totalCount, joinCount, absentCount, checkedInCount] = await prisma.$transaction([
+    prisma.rsvp.count({ where: { eventId: event.id } }),
+    prisma.rsvp.count({ where: { eventId: event.id, status: "join" } }),
+    prisma.rsvp.count({ where: { eventId: event.id, status: "absent" } }),
+    prisma.rsvp.count({ where: { eventId: event.id, checkedInAt: { not: null } } }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(safePage, totalPages);
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
+  // 2) 参加者データの取得（最新25件をページング）
   const rsvps = await prisma.rsvp.findMany({
     where: { eventId: event.id },
     orderBy: { updatedAt: "desc" },
+    skip: offset,
+    take: PAGE_SIZE,
+    select: {
+      id: true,
+      displayName: true,
+      status: true,
+      checkedInAt: true,
+      userId: true,
+      comment: true,
+    },
   });
-
-  // 3) 集計
-  const joinCount = rsvps.filter((r) => r.status === "join").length;
-  const absentCount = rsvps.filter((r) => r.status === "absent").length;
-  const totalCount = rsvps.length;
-  const checkedInCount = rsvps.filter((r) => r.checkedInAt != null).length;
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-8">
@@ -105,10 +131,7 @@ export default async function AdminPage() {
 
           <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
             <div className="w-full rounded bg-white px-4 py-2 text-sm shadow-sm xl:w-auto">
-              管理者:{" "}
-              <span className="font-bold text-green-600">
-                {session?.user?.name ?? "（名前未取得）"}
-              </span>
+              管理者: <span className="font-bold text-green-600">ログイン中</span>
             </div>
 
             <div className="w-full rounded bg-white px-4 py-3 shadow-sm xl:w-[320px]">
@@ -166,6 +189,40 @@ export default async function AdminPage() {
             <span className="text-xs text-gray-500 sm:max-w-[60%] sm:text-right sm:truncate">
               イベント: {event.title}
             </span>
+          </div>
+          <div className="px-4 sm:px-6 py-3 border-b bg-white flex items-center justify-between">
+            <span className="text-xs text-gray-500">
+              {totalCount === 0
+                ? "0件"
+                : `${offset + 1}-${Math.min(offset + PAGE_SIZE, totalCount)} / ${totalCount}件`}
+            </span>
+            <div className="flex items-center gap-2">
+              <a
+                href={currentPage > 1 ? `/admin?page=${currentPage - 1}` : "#"}
+                aria-disabled={currentPage <= 1}
+                className={`rounded border px-3 py-1 text-xs ${
+                  currentPage > 1
+                    ? "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    : "cursor-not-allowed border-gray-200 text-gray-300"
+                }`}
+              >
+                前へ
+              </a>
+              <span className="text-xs text-gray-600">
+                {currentPage} / {totalPages}
+              </span>
+              <a
+                href={currentPage < totalPages ? `/admin?page=${currentPage + 1}` : "#"}
+                aria-disabled={currentPage >= totalPages}
+                className={`rounded border px-3 py-1 text-xs ${
+                  currentPage < totalPages
+                    ? "border-gray-300 text-gray-700 hover:bg-gray-50"
+                    : "cursor-not-allowed border-gray-200 text-gray-300"
+                }`}
+              >
+                次へ
+              </a>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

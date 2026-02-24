@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { isAdmin } from "@/app/_lib/auth-utils";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  // ★簡易：いまは「管理画面に入れる＝管理者」前提
+  if (!isAdmin(session)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const body = await req.json();
   const { eventId, userId, action } = body as {
     eventId: string;
