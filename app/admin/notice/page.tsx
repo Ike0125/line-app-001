@@ -75,7 +75,7 @@ export default async function AdminNoticePage({
     throw e;
   }
 
-  // 表示対象イベント（isActive優先 / 今日以降 5件）
+  // 表示対象イベント（今日以降 5件）
   const start = getJstStartOfTodayUtc();
 
   const events = await prisma.event.findMany({
@@ -88,7 +88,6 @@ export default async function AdminNoticePage({
   const selectedEventId = sp.eventId;
   const current =
     (selectedEventId ? events.find((e) => e.id === selectedEventId) : null) ??
-    events.find((e) => e.isActive) ??
     events[0] ??
     null;
 

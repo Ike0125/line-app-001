@@ -130,8 +130,13 @@ UI は最小限とし、**機能検証を優先**しています。
 - `NEXTAUTH_SECRET`
 - `LINE_CLIENT_ID`
 - `LINE_CLIENT_SECRET`
-- `GOOGLE_CLIENT_ID` ※Google認証用
-- `GOOGLE_CLIENT_SECRET` ※Google認証用
+- `NEXTAUTH_GOOGLE_CLIENT_ID` ※管理画面Googleログイン用（旧: `GOOGLE_CLIENT_ID`）
+- `NEXTAUTH_GOOGLE_CLIENT_SECRET` ※管理画面Googleログイン用（旧: `GOOGLE_CLIENT_SECRET`）
+- `GCAL_OAUTH_CLIENT_ID` ※Google Calendar同期OAuth用（旧: `GCAL_CLIENT_ID`）
+- `GCAL_OAUTH_CLIENT_SECRET` ※Google Calendar同期OAuth用（旧: `GCAL_CLIENT_SECRET`）
+- `GCAL_OAUTH_REDIRECT_URI` ※Google Calendar同期OAuth用（旧: `GOOGLE_REDIRECT_URI`）
+- `GCAL_SYNC_EMAIL` ※同期対象アカウント
+- `GCAL_CALENDAR_ID` ※同期対象カレンダー（通常 `primary`）
 - `ADMIN_USER_ID` ※LINE User ID（カンマ区切りで複数指定可）
 - `ADMIN_USER_EMAILS` ※Google認証用（カンマ区切りで複数指定可）
 - `NOTICE_EDITOR_USER_IDS` ※LINE User ID（カンマ区切りで複数指定可）

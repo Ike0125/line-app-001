@@ -20,6 +20,19 @@ export async function POST(req: Request) {
   }
 
   try {
+    const gcalClientId = process.env.GCAL_OAUTH_CLIENT_ID ?? process.env.GCAL_CLIENT_ID;
+    const gcalClientSecret =
+      process.env.GCAL_OAUTH_CLIENT_SECRET ?? process.env.GCAL_CLIENT_SECRET;
+    const gcalRedirectUri =
+      process.env.GCAL_OAUTH_REDIRECT_URI ?? process.env.GOOGLE_REDIRECT_URI;
+
+    if (!gcalClientId || !gcalClientSecret || !gcalRedirectUri) {
+      return NextResponse.json(
+        { message: "Missing Google Calendar OAuth env vars" },
+        { status: 500 }
+      );
+    }
+
     // ✅ req はここでしか使えない
     let payload: any;
     try {
@@ -50,11 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Google not linked yet" }, { status: 400 });
     }
 
-    const oauth2 = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID!,
-      process.env.GOOGLE_CLIENT_SECRET!,
-      process.env.GOOGLE_REDIRECT_URI!
-    );
+    const oauth2 = new google.auth.OAuth2(gcalClientId, gcalClientSecret, gcalRedirectUri);
     oauth2.setCredentials({ refresh_token: authRow.refreshToken });
 
     const calendar = google.calendar({ version: "v3", auth: oauth2 });
