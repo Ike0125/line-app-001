@@ -19,8 +19,13 @@ const markdownContent = `
 - [SWFテストサイト](https://swf1000.jimdofree.com/)
 - [SWF芦花公園グループ](https://chiku.setagayashakyo.or.jp/member/detail/745)
 
+</details>
 
-\`tailwind.config.ts\` を編集します。
+<details>
+<summary className="cursor-pointer font-bold text-xl mb-4">Google Calendar 連携表示</summary>
+
+- [gcal連携画面表示](/admin/gcal)
+
 </details>
 
 <details>

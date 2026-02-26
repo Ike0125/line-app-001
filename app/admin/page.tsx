@@ -1,16 +1,22 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/_lib/prisma";
 import { formatJstDateTime } from "@/app/_lib/formatDate";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 const PAGE_SIZE = 25;
 
 type AdminPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     page?: string;
-  };
+  }>;
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
+  const params = await searchParams;
+  const session = await getServerSession(authOptions);
+  const adminDisplayName = session?.user?.name || session?.user?.email || "不明";
+
   // 1) イベント情報の取得
   const event = await prisma.event.findFirst({
     orderBy: [{ isActive: "desc" }, { deadline: "desc" }],
@@ -90,7 +96,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     );
   }
 
-  const rawPage = Number(searchParams?.page ?? "1");
+  const rawPage = Number(params?.page ?? "1");
   const safePage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
 
   const [totalCount, joinCount, absentCount, checkedInCount] = await prisma.$transaction([
@@ -131,7 +137,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
           <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
             <div className="w-full rounded bg-white px-4 py-2 text-sm shadow-sm xl:w-auto">
-              管理者: <span className="font-bold text-green-600">ログイン中</span>
+              管理者: <span className="font-bold text-green-600">{adminDisplayName}</span>
             </div>
 
             <div className="w-full rounded bg-white px-4 py-3 shadow-sm xl:w-[320px]">

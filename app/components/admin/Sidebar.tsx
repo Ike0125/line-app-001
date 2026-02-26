@@ -183,6 +183,15 @@ export default function Sidebar() {
             </li>
             <li>
               <Link
+                href="/admin/gcal"
+                onClick={closeSidebar}
+                className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
+              >
+                <span>🔐</span> Google連携状態
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin"
                 onClick={closeSidebar}
                 className="block p-3 rounded hover:bg-slate-800 transition-colors duration-200 flex items-center gap-3"
