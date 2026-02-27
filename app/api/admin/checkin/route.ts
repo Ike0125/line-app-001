@@ -20,6 +20,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
+  if (action === "checkin") {
+    const row = await prisma.rsvp.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+      select: { status: true, approvalStatus: true },
+    });
+    if (!row || row.status !== "join" || row.approvalStatus !== "approved") {
+      return NextResponse.json({ error: "approval_required" }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.rsvp.update({
     where: { eventId_userId: { eventId, userId } },
     data: { checkedInAt: action === "checkin" ? new Date() : null },

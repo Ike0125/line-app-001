@@ -10,6 +10,7 @@ type Row = {
   fee: string;
   memo: string | null;
   status: string; // join / absent
+  approvalStatus: string | null;
   checkedInAt: string | null;
   comment: string;
   updatedAt: string;
@@ -36,6 +37,14 @@ export default function HistoryPage() {
         <div className="space-y-3">
           {rows.map((r) => {
             const statusLabel = r.status === "join" ? "参加 🙆‍♂️" : "欠席 🙅‍♂️";
+            const approvalLabel =
+              r.status !== "join"
+                ? "-"
+                : r.approvalStatus === "approved"
+                  ? "確認済み"
+                  : r.approvalStatus === "rejected"
+                    ? "却下"
+                    : "確認待ち";
             const checkinLabel = r.checkedInAt ? "受付済み" : "未受付";
             return (
               <div key={r.eventId + r.updatedAt} className="rounded-lg border p-4 space-y-1">
@@ -46,7 +55,8 @@ export default function HistoryPage() {
                 {r.memo && <div className="text-sm text-gray-600">メモ：{r.memo}</div>}
 
                 <div className="pt-2 text-sm">
-                  状態：<span className="font-semibold">{statusLabel}</span> ／ 受付：{checkinLabel}
+                  状態：<span className="font-semibold">{statusLabel}</span> ／
+                  受付確認：{approvalLabel} ／ 受付：{checkinLabel}
                 </div>
 
                 {r.comment && <div className="text-sm text-gray-600">コメント：{r.comment}</div>}

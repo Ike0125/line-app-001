@@ -34,6 +34,11 @@ model Rsvp {
   userId      String
   displayName String
   status      String
+  // 参加申請フロー: pending/approved/rejected（欠席時はnull）
+  approvalStatus String?
+  approvedAt     DateTime?
+  approvedBy     String?
+  approvalNote   String?
   comment     String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

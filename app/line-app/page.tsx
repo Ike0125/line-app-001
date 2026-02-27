@@ -81,12 +81,23 @@ export default async function LineAppPage({
 
     await prisma.rsvp.upsert({
       where: { eventId_userId: { eventId: event.id, userId: currentUserId } },
-      update: { status: "join" },
+      update: {
+        status: "join",
+        approvalStatus: "pending",
+        approvedAt: null,
+        approvedBy: null,
+        approvalNote: null,
+        checkedInAt: null,
+      },
       create: {
         eventId: event.id,
         userId: currentUserId,
         displayName: existing?.displayName ?? fallbackName,
         status: "join",
+        approvalStatus: "pending",
+        approvedAt: null,
+        approvedBy: null,
+        approvalNote: null,
         comment: existing?.comment ?? "",
       },
     });
@@ -118,12 +129,23 @@ export default async function LineAppPage({
 
     await prisma.rsvp.upsert({
       where: { eventId_userId: { eventId: event.id, userId: currentUserId } },
-      update: { status: "absent" },
+      update: {
+        status: "absent",
+        approvalStatus: null,
+        approvedAt: null,
+        approvedBy: null,
+        approvalNote: null,
+        checkedInAt: null,
+      },
       create: {
         eventId: event.id,
         userId: currentUserId,
         displayName: existing?.displayName ?? fallbackName,
         status: "absent",
+        approvalStatus: null,
+        approvedAt: null,
+        approvedBy: null,
+        approvalNote: null,
         comment: existing?.comment ?? "",
       },
     });
@@ -133,10 +155,30 @@ export default async function LineAppPage({
 
   const updated = getParam(params, "updated");
   const statusText =
-    myRsvp?.status === "join" ? "参加 🙆‍♂️" : myRsvp?.status === "absent" ? "欠席 🙅‍♂️" : "未登録";
+    myRsvp?.status === "join"
+      ? myRsvp?.approvalStatus === "approved"
+        ? "参加確定"
+        : myRsvp?.approvalStatus === "rejected"
+          ? "参加申請（要確認）"
+          : "参加申請中"
+      : myRsvp?.status === "absent"
+        ? "欠席"
+        : "未登録";
+  const approvalText =
+    myRsvp?.status !== "join"
+      ? "-"
+      : myRsvp?.approvalStatus === "approved"
+        ? "確認済み"
+        : myRsvp?.approvalStatus === "rejected"
+          ? "却下"
+          : "確認待ち";
 
   const updatedText =
-    updated === "join" ? "参加に更新しました" : updated === "absent" ? "欠席に更新しました" : null;
+    updated === "join"
+      ? "参加申請を送信しました（管理者確認待ち）"
+      : updated === "absent"
+        ? "欠席に更新しました"
+        : null;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6 flex flex-col justify-center">
@@ -159,6 +201,7 @@ export default async function LineAppPage({
 
         <div className="pt-3 border-t mt-3">
           <div className="text-sm font-bold text-gray-700">あなたの状態：{statusText}</div>
+          <div className="text-sm text-gray-600 mt-1">受付確認：{approvalText}</div>
           {myRsvp?.displayName && (
             <div className="text-sm text-gray-600 mt-1">お名前：{myRsvp.displayName}</div>
           )}

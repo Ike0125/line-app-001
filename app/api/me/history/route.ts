@@ -22,6 +22,7 @@ export async function GET() {
       fee: r.event.fee,
       memo: r.event.memo,
       status: r.status,
+      approvalStatus: r.approvalStatus,
       // 受付日時も文字列に変換
       checkedInAt: r.checkedInAt instanceof Date ? r.checkedInAt.toISOString() : r.checkedInAt,
       comment: r.comment ?? "",

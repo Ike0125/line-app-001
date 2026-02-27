@@ -55,6 +55,8 @@ export default async function LineAppPage({
     }
     
     // 登録または更新 (Upsert)
+    const nextStatus = formData.get('status') as string;
+    const isJoin = nextStatus === 'join';
     await prisma.rsvp.upsert({
       where: {
         eventId_userId: {
@@ -64,14 +66,23 @@ export default async function LineAppPage({
       },
       update: {
         displayName: formData.get('displayName') as string,
-        status: formData.get('status') as string,
+        status: nextStatus,
+        approvalStatus: isJoin ? 'pending' : null,
+        approvedAt: null,
+        approvedBy: null,
+        approvalNote: null,
+        checkedInAt: null,
         comment: formData.get('comment') as string,
       },
       create: {
         eventId: formData.get('eventId') as string,
         userId: userId,
         displayName: formData.get('displayName') as string,
-        status: formData.get('status') as string,
+        status: nextStatus,
+        approvalStatus: isJoin ? 'pending' : null,
+        approvedAt: null,
+        approvedBy: null,
+        approvalNote: null,
         comment: formData.get('comment') as string,
       },
     });
@@ -126,6 +137,9 @@ export default async function LineAppPage({
                 <p className={`font-bold text-lg ${myRsvp?.status === 'join' ? 'text-green-600' : 'text-red-500'}`}>
                   {myRsvp?.status === 'join' ? '参加 🙆‍♂️' : '欠席 🙅‍♂️'}
                 </p>
+                {myRsvp?.status === 'join' ? (
+                  <p className="text-xs text-amber-700 mt-1">受付確認：管理者確認待ち</p>
+                ) : null}
               </div>
             </div>
 

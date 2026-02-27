@@ -16,6 +16,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = await searchParams;
   const session = await getServerSession(authOptions);
   const adminDisplayName = session?.user?.name || session?.user?.email || "不明";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminActor = (session?.user as any)?.id || session?.user?.email || session?.user?.name || "admin";
 
   // 1) イベント情報の取得
   const event = await prisma.event.findFirst({
@@ -52,6 +54,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
     if (!event) return;
 
+    const row = await prisma.rsvp.findUnique({
+      where: { eventId_userId: { eventId: event.id, userId } },
+      select: { status: true, approvalStatus: true },
+    });
+    if (!row || row.status !== "join" || row.approvalStatus !== "approved") return;
+
     await prisma.rsvp.update({
       where: { eventId_userId: { eventId: event.id, userId } },
       data: { checkedInAt: new Date() },
@@ -72,6 +80,44 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     await prisma.rsvp.update({
       where: { eventId_userId: { eventId: event.id, userId } },
       data: { checkedInAt: null },
+    });
+
+    revalidatePath("/admin");
+  }
+
+  async function approveAction(formData: FormData) {
+    "use server";
+
+    const userId = String(formData.get("userId") ?? "");
+    if (!userId || !event) return;
+
+    await prisma.rsvp.update({
+      where: { eventId_userId: { eventId: event.id, userId } },
+      data: {
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        approvedBy: adminActor,
+        approvalNote: null,
+      },
+    });
+
+    revalidatePath("/admin");
+  }
+
+  async function rejectAction(formData: FormData) {
+    "use server";
+
+    const userId = String(formData.get("userId") ?? "");
+    if (!userId || !event) return;
+
+    await prisma.rsvp.update({
+      where: { eventId_userId: { eventId: event.id, userId } },
+      data: {
+        approvalStatus: "rejected",
+        approvedAt: null,
+        approvedBy: adminActor,
+        checkedInAt: null,
+      },
     });
 
     revalidatePath("/admin");
@@ -99,9 +145,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const rawPage = Number(params?.page ?? "1");
   const safePage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
 
-  const [totalCount, joinCount, absentCount, checkedInCount] = await prisma.$transaction([
+  const [totalCount, pendingCount, approvedCount, absentCount, checkedInCount] = await prisma.$transaction([
     prisma.rsvp.count({ where: { eventId: event.id } }),
-    prisma.rsvp.count({ where: { eventId: event.id, status: "join" } }),
+    prisma.rsvp.count({ where: { eventId: event.id, status: "join", approvalStatus: "pending" } }),
+    prisma.rsvp.count({ where: { eventId: event.id, status: "join", approvalStatus: "approved" } }),
     prisma.rsvp.count({ where: { eventId: event.id, status: "absent" } }),
     prisma.rsvp.count({ where: { eventId: event.id, checkedInAt: { not: null } } }),
   ]);
@@ -120,6 +167,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       id: true,
       displayName: true,
       status: true,
+      approvalStatus: true,
       checkedInAt: true,
       userId: true,
       comment: true,
@@ -157,7 +205,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
         {/* 集計 */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="bg-gray-50 rounded-md px-3 py-3">
               <p className="text-gray-500 text-xs font-bold uppercase">回答総数</p>
               <p className="text-2xl sm:text-3xl font-bold text-gray-800 tabular-nums">
@@ -166,9 +214,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </div>
 
             <div className="bg-gray-50 rounded-md px-3 py-3">
-              <p className="text-gray-500 text-xs font-bold uppercase">参加予定</p>
-              <p className="text-2xl sm:text-3xl font-bold text-green-600 tabular-nums">
-                {joinCount} <span className="text-xs font-normal">人</span>
+              <p className="text-gray-500 text-xs font-bold uppercase">受付確認待ち</p>
+              <p className="text-2xl sm:text-3xl font-bold text-amber-600 tabular-nums">
+                {pendingCount} <span className="text-xs font-normal">人</span>
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-md px-3 py-3">
+              <p className="text-gray-500 text-xs font-bold uppercase">受付確認済み</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-700 tabular-nums">
+                {approvedCount} <span className="text-xs font-normal">人</span>
               </p>
             </div>
 
@@ -237,6 +292,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <tr>
                   <th className="px-6 py-3">名前</th>
                   <th className="px-6 py-3">状況</th>
+                  <th className="px-6 py-3">受付確認</th>
                   <th className="px-6 py-3">受付</th>
                   <th className="px-6 py-3">コメント</th>
                 </tr>
@@ -245,28 +301,86 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <tbody className="divide-y divide-gray-200">
                 {rsvps.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
+                    <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
                       まだ回答がありません
                     </td>
                   </tr>
                 ) : (
                   rsvps.map((rsvp) => {
                     const isJoin = rsvp.status === "join";
+                    const isApproved = rsvp.approvalStatus === "approved";
+                    const isPending = rsvp.approvalStatus === "pending";
+                    const isRejected = rsvp.approvalStatus === "rejected";
                     const isCheckedIn = !!rsvp.checkedInAt;
+                    const statusLabel = !isJoin
+                      ? "欠席"
+                      : isApproved
+                        ? "参加確定"
+                        : isRejected
+                          ? "参加申請（却下）"
+                          : "参加申請";
+                    const statusClass = !isJoin
+                      ? "bg-red-100 text-red-800"
+                      : isApproved
+                        ? "bg-blue-100 text-blue-800"
+                        : isRejected
+                          ? "bg-gray-200 text-gray-700"
+                          : "bg-amber-100 text-amber-800";
 
                     return (
                       <tr key={rsvp.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 font-medium text-gray-900">{rsvp.displayName}</td>
 
                         <td className="px-6 py-4">
-                          {isJoin ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              参加 🙆‍♂️
-                            </span>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
+                          >
+                            {statusLabel}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          {!isJoin ? (
+                            <span className="text-xs text-gray-400">対象外</span>
+                          ) : isApproved ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-blue-700">確認済み</span>
+                              <form action={rejectAction}>
+                                <input type="hidden" name="userId" value={rsvp.userId} />
+                                <button
+                                  type="submit"
+                                  className="text-xs border border-gray-300 rounded px-2 py-1 hover:bg-gray-100"
+                                >
+                                  差戻し
+                                </button>
+                              </form>
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              欠席 🙅‍♂️
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`text-xs font-bold ${isRejected ? "text-red-700" : isPending ? "text-amber-700" : "text-gray-500"}`}
+                              >
+                                {isRejected ? "却下" : isPending ? "確認待ち" : "未設定"}
+                              </span>
+                              <form action={approveAction}>
+                                <input type="hidden" name="userId" value={rsvp.userId} />
+                                <button
+                                  type="submit"
+                                  className="text-xs bg-blue-600 text-white font-bold rounded px-3 py-1 hover:bg-blue-700"
+                                >
+                                  確認OK
+                                </button>
+                              </form>
+                              <form action={rejectAction}>
+                                <input type="hidden" name="userId" value={rsvp.userId} />
+                                <button
+                                  type="submit"
+                                  className="text-xs border border-gray-300 rounded px-2 py-1 hover:bg-gray-100"
+                                >
+                                  却下
+                                </button>
+                              </form>
+                            </div>
                           )}
                         </td>
 
@@ -274,6 +388,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <td className="px-6 py-4">
                           {!isJoin ? (
                             <span className="text-xs text-gray-400">参加者のみ</span>
+                          ) : !isApproved ? (
+                            <span className="text-xs text-amber-700">受付確認後に受付可能</span>
                           ) : isCheckedIn ? (
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold text-purple-700">受付済み</span>

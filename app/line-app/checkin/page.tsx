@@ -35,7 +35,7 @@ export default function CheckinPage() {
   const { event, rsvp } = data;
   if (!event) return <main className="p-4">現在受付中のイベントはありません。</main>;
 
-  const canCheckin = rsvp && rsvp.status === "join";
+  const canCheckin = rsvp && rsvp.status === "join" && rsvp.approvalStatus === "approved";
   const already = !!rsvp?.checkedInAt;
 
   async function checkin() {
@@ -109,7 +109,9 @@ export default function CheckinPage() {
       </div>
 
       {!canCheckin ? (
-        <div className="rounded-lg border p-4">参加（join）の登録がないため受付できません。</div>
+        <div className="rounded-lg border p-4">
+          参加申請が管理者に承認されるまで受付できません。
+        </div>
       ) : (
         <div className="rounded-lg border p-4 space-y-2">
           <div>状態：{already ? "受付済み" : "未受付"}</div>
